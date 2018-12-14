@@ -28,10 +28,9 @@ void main()
     highp vec4 normalVec = uNormalMatrix * vec4(aVertexNormal, 1.0);
     highp vec4 worldVertexPos = uModelViewMatrix * aVertexPosition;
 
-    highp vec3 lightVec =  normalize(vec3(0.85, 0.8, 0.75));//normalize(uLightPosition - worldVertexPos.xyz);     // L
+    highp vec3 lightVec = normalize(uLightPosition - worldVertexPos.xyz);     // L
     highp vec3 viewVec = normalize(-worldVertexPos.xyz);                      // V
     highp vec3 reflecVec = reflect(-lightVec, normalVec.xyz);                 // R
-
 
     // Specular
     highp float spec = max(dot(reflecVec, viewVec), 0.0);      
