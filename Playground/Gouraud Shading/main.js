@@ -25,7 +25,6 @@ function main() {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexNormal: gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-            textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -33,13 +32,11 @@ function main() {
             normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
             lightPosition: gl.getUniformLocation(shaderProgram, 'uLightPosition'),
             lightColor: gl.getUniformLocation(shaderProgram, 'uLightColor'),
-            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
         },
     };
 
     // Build the objects to be drawn
     const buffers = initBuffers(gl);
-    const texture = loadTexture(gl, 'cubetexture.png');
 
     // Draw the scene repeatedly
     var prevTime = 0;
@@ -48,7 +45,7 @@ function main() {
         const deltaTime = currTime - prevTime;
         prevTime = currTime;
 
-        drawScene(gl, programInfo, buffers, texture, deltaTime);
+        drawScene(gl, programInfo, buffers, deltaTime);
 
         requestAnimationFrame(render);
     }
@@ -150,11 +147,8 @@ function initBuffers(gl) {
         -1.0,  1.0, -1.0,
     ];
 
-    // Create a buffer
     const positionBuffer = gl.createBuffer();
-    // Bind the buffer
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    // Create a Float32Array from js array and fill current buffer
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), 
                   gl.STATIC_DRAW);
     
@@ -200,14 +194,10 @@ function initBuffers(gl) {
         -1.0,  0.0,  0.0,
     ];
 
-    // Create a buffer
     const normalBuffer = gl.createBuffer();
-    // Bind the buffer
     gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    // Create a Float32Array from js array and fill current buffer
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), 
                   gl.STATIC_DRAW);
-
 
     //-------------------------------------------
     // Color buffer
@@ -235,47 +225,6 @@ function initBuffers(gl) {
                   gl.STATIC_DRAW);
 
     //-------------------------------------------
-    // Texture buffer
-    //-------------------------------------------
-    const textureCoordinates = [
-        // Front
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-        // Back
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-        // Top
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-        // Bottom
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-        // Right
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-        // Left
-        0.0,  0.0,
-        1.0,  0.0,
-        1.0,  1.0,
-        0.0,  1.0,
-    ];
-
-    const textureCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
-                  gl.STATIC_DRAW);
-
-    //-------------------------------------------
     // Index buffer
     //------------------------------------------- 
     // Each face as two triangles, pointing to the indices in the vertex array
@@ -297,63 +246,14 @@ function initBuffers(gl) {
         position: positionBuffer,
         normal: normalBuffer,
         color: colorBuffer,
-        textureCoord: textureCoordBuffer,
         indices: indexBuffer,
     };
 }
 
 // ------------------------------------------------------------------------
-// Initialize a texture and load image.
-// When the image finishes loading, copy to texture.
-// ------------------------------------------------------------------------
-function loadTexture(gl, url) {
-    // ------------------------------------
-    // Placeholder pixel
-    // ------------------------------------
-    // Put a single pixel in texture to use immediately. 
-    const level = 0;
-    const internalFormat = gl.RGBA;
-    const width = 1;
-    const height = 1;
-    const border = 0;
-    const srcFormat = gl.RGBA;
-    const srcType = gl.UNSIGNED_BYTE;
-    const pixel = new Uint8Array([0, 0, 255, 255]); // opaque blue
-
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, 
-                  width, height, border, srcFormat, srcType,
-                  pixel);
-    
-    // ------------------------------------
-    // Loaded image
-    // ------------------------------------
-    // After downloading, update the texture with contents of the image.
-    const image = new Image();
-    image.onload = function () {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, 
-                      srcFormat, srcType, image);
-        // If it's a power of 2, generate mips
-        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-            gl.generateMipmap(gl.TEXTURE_2D);
-        // Otherwise, turn off mips and set wrapping to clamp
-        } else {
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        }
-    };
-    image.src = url;
-
-    return texture;
-}
-
-// ------------------------------------------------------------------------
 // Draw the scene
 // ------------------------------------------------------------------------
-function drawScene(gl, programInfo, buffers, texture, deltaTime) {
+function drawScene(gl, programInfo, buffers, deltaTime) {
     // ------------------------------------
     // General GL setup/drawing related
     // ------------------------------------
@@ -422,22 +322,12 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
                         normalMatrix);
 
     // ------------------------------------
-    // Texture related
-    // ------------------------------------
-    // Set texture unit 0 to active
-    gl.activeTexture(gl.TEXTURE0);
-    // Bind texture to unit 0
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    // Make the shader's sampler use texture 0
-    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-    // ------------------------------------
     // Lighting related
     // ------------------------------------
     // Set light location as diagonal to camera
-    gl.uniform3fv(programInfo.uniformLocations.lightPosition, [2.0, 2.0, 0.0]);
+    gl.uniform3fv(programInfo.uniformLocations.lightPosition, [5.0, 5.0, 0.0]);
     gl.uniform3fv(programInfo.uniformLocations.lightColor, [1.0, 1.0, 1.0]);
-
+    
     // ------------------------------------
     // Instructions to pull positions from position buffer to vertexPosition
     // ------------------------------------
@@ -502,27 +392,6 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     }
 
     // ------------------------------------
-    // Instructions to pull texture coordinates from buffer
-    // ------------------------------------
-    {
-        const numComponents = 2;        // coord is composed of 2 values
-        const type = gl.FLOAT;          // data in the buffer is 32-bit float
-        const normalize = false;        // don't normalize
-        const stride = 0;               // bytes from one set to the next
-        const offset = 0;               // bytes in buffer to start from
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-        gl.vertexAttribPointer(
-            programInfo.attribLocations.textureCoord,
-            numComponents,
-            type,
-            normalize,
-            stride,
-            offset);
-        gl.enableVertexAttribArray(
-            programInfo.attribLocations.textureCoord);
-    }
-
-    // ------------------------------------
     // Draw
     // ------------------------------------
     {
@@ -535,7 +404,7 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     // ------------------------------------
     // Update for animations
     // ------------------------------------
-    cubeRotation += deltaTime * 1/2*Math.PI; // 4s per rotation
+    cubeRotation += deltaTime;
 }
 
 // ------------------------------------------------------------------------
