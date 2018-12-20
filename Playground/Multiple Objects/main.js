@@ -190,10 +190,60 @@ function initBuffers(gl) {
         elementCount: 25,
     }
 
+    // Interlaced buffer
+    var interlacedVertices = [
+        //( x     y     z )  (r     g    b    a )
+        // --------------------------------------
+        0.0,  0.5,  0.0,   255,   0,   0,  255, // V0
+        0.5, -0.5,  0.0,     0, 250,   6,  255, // V1
+       -0.5, -0.5,  0.0,     0,   0, 255,  255  // V2
+    ];
+    var interlacedVertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, interlacedVertexBuffer);
+    var interlacedBuffer;
+    {
+        var vertexCount = 3;
+
+        // Calculate bytes for one vertex element
+        var vertexSizeInBytes = 3 * Float32Array.BYTES_PER_ELEMENT +
+                                4 * Uint8Array.BYTES_PER_ELEMENT;
+        var vertexSizeInFloats = vertexSizeInBytes / Float32Array.BYTES_PER_ELEMENT;
+        // Allocate buffer
+        var buffer = new ArrayBuffer(vertexCount * vertexSizeInBytes);
+        // Map to two diffent views
+        var positionView = new Float32Array(buffer); // Each float takes 4 bytes
+        var colorView = new Uint8Array(buffer); // Each color takes a byte
+
+        var positionOffestInFloats = 0;
+        var colorOffsetInBytes = 12;
+        var k = 0; // Javascript array index
+        for (var i = 0; i < vertexCount; i++) {
+            var posOff = vertexSizeInFloats * i;
+            var clrOff = vertexSizeInBytes * i;
+            positionView[posOff + positionOffestInFloats]   = interlacedVertices[k++];     // x
+            positionView[posOff + positionOffestInFloats+1] = interlacedVertices[k++];   // y
+            positionView[posOff + positionOffestInFloats+2] = interlacedVertices[k++];   // z
+            colorView[clrOff + colorOffsetInBytes]   = interlacedVertices[k++];            // R
+            colorView[clrOff + colorOffsetInBytes+1] = interlacedVertices[k++];          // G
+            colorView[clrOff + colorOffsetInBytes+2] = interlacedVertices[k++];          // B
+            colorView[clrOff + colorOffsetInBytes+3] = interlacedVertices[k++];          // A
+
+        }
+        gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
+        
+        interlacedBuffer = {
+            vertexBuffer: interlacedVertexBuffer,
+            numComponents: 3,
+            numColorComponents: 4,
+            vertexCount: vertexCount,
+        }
+    }
+
     return {
         hexagonBuffer: hexagonBuffer,
         triangleBuffer: triangleBuffer,
         stripBuffer: stripBuffer,
+        interlacedBuffer: interlacedBuffer,
     };
 }
 
@@ -285,4 +335,26 @@ function drawScene(gl, programInfo, buffers) {
         gl.drawArrays(gl.LINE_STRIP, start1, count);
         gl.drawArrays(gl.LINE_STRIP, start2, count);
     }   
+
+    // ------------------------------------
+    // Draw the interlaced triangle
+    // ------------------------------------
+    {
+        var stride = 16;
+        var offset = 0;
+        var colorOffset = 12;
+        const start = 0;
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.interlacedBuffer.vertexBuffer);
+
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition,
+                               buffers.interlacedBuffer.numComponents, 
+                               gl.FLOAT, false, stride, offset);
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexColor,
+                               buffers.interlacedBuffer.numColorComponents, 
+                               gl.UNSIGNED_BYTE, true, stride, colorOffset);
+        gl.drawArrays(gl.TRIANGLES, start, buffers.interlacedBuffer.vertexCount);
+    }
 }
