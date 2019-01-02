@@ -3,26 +3,37 @@ main();
 // ------------------------------------------------------------------------
 // Variables for animation
 // ------------------------------------------------------------------------
-var cubeAngle    = 0;
+var prevTime     = 0; // Previous frame time
+
+var cubeAngle    = 0; // Angle of the cube
 const cubePeriod = 2; // 2s per round
 const cubeRadius = 5; // 5 units away
 
 // ------------------------------------------------------------------------
-//  Start here        
+//  Start here.
 // ------------------------------------------------------------------------    
 function main() {
-    const canvas = document.querySelector("#glcanvas"); // or document.getElementById("myGLCanvas");
+    var canvas = document.querySelector("#glcanvas"); // or document.getElementById("myGLCanvas");
+    canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     
     const gl = WebGLDebugUtils.makeDebugContext(createGLContext(canvas)); // Init the GL context
     const wgl = {};                 // The object to hold all web gl information
-    initShaders(gl, wgl);           // Setup the shader program and program info
-    initMatrixStack(gl, wgl);       // Setup the stack functionality
-    initModels(gl, wgl);            // Build objects to be drawn and their buffers
-    initDrawables(gl, wgl);         // Prepare the drawn objects
-    initGl(gl, wgl);                // Setup gl properties
+    const render = createRenderFunction(gl, wgl);
+
+    initListeners(gl, wgl, canvas, render); // Add listeners to the canvas
+    initShaders(gl, wgl);                   // Setup the shader program and program info
+    initMatrixStack(gl, wgl);               // Setup the stack functionality
+    initModels(gl, wgl);                    // Build objects to be drawn and their buffers
+    initDrawables(gl, wgl);                 // Prepare the drawn objects
+    initGl(gl, wgl);                        // Setup gl properties
     
-    // Draw the scene repeadedly
-    var prevTime = 0;
+    wgl.requestId = requestAnimationFrame(render); // Draw the scene repeadedly
+}
+
+// ------------------------------------------------------------------------
+// Create a render function that holds gl and wgl in scope.
+// ------------------------------------------------------------------------
+function createRenderFunction(gl, wgl) {
     function render(currTime) {
         // Handle timing
         currTime *= 0.001;              // Convert millis to seconds
@@ -32,7 +43,28 @@ function main() {
         drawScene(gl, wgl, deltaTime);
         wgl.requestId = requestAnimationFrame(render);
     }
-    wgl.requestId = requestAnimationFrame(render);
+    return render;
+}
+
+// ------------------------------------------------------------------------
+// Initialize and add listeners to the canvas.
+// ------------------------------------------------------------------------
+function initListeners(gl, wgl, canvas, render) {
+    function handleContextLost(event) {
+        event.preventDefault(); // Prevent default action that context will not be restored
+        cancelAnimationFrame(wgl.requestId);
+    }
+    function handleContextRestored(event) {
+        initShaders(gl, wgl);
+        initModels(gl, wgl);
+        initGl(gl, wgl);
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+    // Uncomment for simulating lost context.
+    // window.addEventListener('mousedown', () => canvas.loseContext());
 }
 
 // ------------------------------------------------------------------------
@@ -63,7 +95,7 @@ function initShaders(gl, wgl) {
     gl.linkProgram(shaderProgram);
 
     // Alert if it failed
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS) && !gl.isContextLost()) {
         alert("Unable to initialize shader program: " + gl.getProgramInfoLog(shaderProgram));
         return null;
     }
@@ -127,7 +159,7 @@ function loadShader(gl, type, source) {
     gl.compileShader(shader);
 
     // Alert if it failed
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
         alert("Error occured compiling the " 
             + (type ==  gl.VERTEX_SHADER ? "vertex" : "fragment") + " shader: " 
             + gl.getShaderInfoLog(shader));
