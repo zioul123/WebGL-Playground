@@ -1,6 +1,13 @@
 main();
 
 // ------------------------------------------------------------------------
+// Variables for animation
+// ------------------------------------------------------------------------
+var cubeAngle    = 0;
+const cubePeriod = 2; // 2s per round
+const cubeRadius = 5; // 5 units away
+
+// ------------------------------------------------------------------------
 //  Start here        
 // ------------------------------------------------------------------------    
 function main() {
@@ -13,7 +20,19 @@ function main() {
     initModels(gl, wgl);            // Build objects to be drawn and their buffers
     initDrawables(gl, wgl);         // Prepare the drawn objects
     initGl(gl, wgl);                // Setup gl properties
-    drawScene(gl, wgl);    // Draw the scene
+    
+    // Draw the scene repeadedly
+    var prevTime = 0;
+    function render(currTime) {
+        // Handle timing
+        currTime *= 0.001;              // Convert millis to seconds
+        const deltaTime = currTime - prevTime;
+        prevTime = currTime;
+        // Draw and request next frame
+        drawScene(gl, wgl, deltaTime);
+        wgl.requestId = requestAnimationFrame(render);
+    }
+    wgl.requestId = requestAnimationFrame(render);
 }
 
 // ------------------------------------------------------------------------
@@ -303,7 +322,7 @@ function initDrawables(gl, wgl) {
     // Instructions to draw floor
     // ------------------------------------ 
     floor = {
-        draw: function() {
+        draw: function(deltaTime) {
             wgl.models.floor.setupAttributes();
             wgl.pushMatrix();
                 const trans = [ 0, -1, 0 ];
@@ -318,14 +337,21 @@ function initDrawables(gl, wgl) {
     // Instructions to draw cube
     // ------------------------------------ 
     cube = {
-        draw: function() {
+        draw: function(deltaTime) {
             wgl.models.cube.setupAttributes();
             wgl.pushMatrix();
-                const angle = 30 * Math.PI / 180;
                 const axis  = [ 0, 1, 0 ];
+
+                // Animation portion
+                cubeAngle += 2 * Math.PI * deltaTime / cubePeriod;
+                mat4.rotate(wgl.modelViewMatrix, wgl.modelViewMatrix, cubeAngle, axis);
+                mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, [ cubeRadius, 0, 0 ]);
+
+                // Cube default height and angle
                 const trans = [ 0, 5, 0 ];
-                mat4.rotate(wgl.modelViewMatrix, wgl.modelViewMatrix, angle, axis);
+                mat4.rotate(wgl.modelViewMatrix, wgl.modelViewMatrix, -cubeAngle, axis);
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
+                
                 wgl.uploadMvMatrix();
 
                 wgl.models.cube.drawElements();
@@ -337,7 +363,7 @@ function initDrawables(gl, wgl) {
     // Instructions to draw table
     // ------------------------------------ 
     table = {
-        draw: function() {
+        draw: function(deltaTime) {
             const brown = [ 0.6, 0.3, 0, 1.0 ];
             wgl.models.cube.setupAttributes(brown);
             // Table top
@@ -400,7 +426,7 @@ function initGl(gl, wgl) {
 // ------------------------------------------------------------------------
 // Draw the scene
 // ------------------------------------------------------------------------
-function drawScene(gl, wgl) {
+function drawScene(gl, wgl, deltaTime) {
     // ------------------------------------
     // General GL setup/drawing related
     // ------------------------------------
@@ -419,6 +445,6 @@ function drawScene(gl, wgl) {
     // Draw all objects
     // ------------------------------------    
     for (let i = 0; i < 3; i++) { //wgl.numberOfModels; i++) {
-        wgl.listOfDrawables[i].draw();
+        wgl.listOfDrawables[i].draw(deltaTime);
     }
 }
