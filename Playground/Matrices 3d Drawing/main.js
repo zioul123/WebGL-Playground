@@ -1,25 +1,26 @@
 main();
 
-// ------------------------------------------------------------------------
-// Variables for animation
-// ------------------------------------------------------------------------
-var prevTime     = 0; // Previous frame time
-
+// -------------------------------------------------------------------------------------------------
+// Variables for animation.
+// -------------------------------------------------------------------------------------------------
+// Cube drawing related
 var cubeAngle    = 0; // Angle of the cube
 var cubeScale    = 1; // Scale of the cube
 const cubePeriod = 2; // 2s per round
 const cubeRadius = 5; // 5 units away
 
-// ------------------------------------------------------------------------
-//  Start here.
-// ------------------------------------------------------------------------    
+// -------------------------------------------------------------------------------------------------
+// ----------------------------------- Interaction functions ---------------------------------------
+// -------------------------------------------------------------------------------------------------
+// Main function to setup and run the WebGL App.
+// -------------------------------------------------------------------------------------------------
 function main() {
     var canvas = document.querySelector("#glcanvas"); // or document.getElementById("myGLCanvas");
     canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
     
     const gl = WebGLDebugUtils.makeDebugContext(createGLContext(canvas)); // Init the GL context
     const wgl = {};                 // The object to hold all web gl information
-    const render = createRenderFunction(gl, wgl);
+    const render = createRenderFunction(gl, wgl, drawScene);
 
     init(gl, wgl); // Initialize shaders, models/buffers and gl properties
 
@@ -27,19 +28,58 @@ function main() {
     initMatrixStack(gl, wgl);               // Setup the stack functionality
     initDrawables(gl, wgl);                 // Prepare the drawn objects
     
-    wgl.requestId = requestAnimationFrame(render); // Draw the scene repeadedly
+    wgl.requestId = requestAnimationFrame(render); // start the render loop
 }
 
-function init(gl, wgl) {
-    initShaders(gl, wgl);                   // Setup the shader program and program info
-    initModels(gl, wgl);                    // Build objects to be drawn and their buffers
-    initGl(gl, wgl);                        // Setup gl properties
+// -------------------------------------------------------------------------------------------------
+// Function to draw the scene.
+// -------------------------------------------------------------------------------------------------
+function drawScene(gl, wgl, deltaTime) {
+    // ------------------------------------
+    // General GL setup/drawing related
+    // ------------------------------------
+    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    
+    mat4.perspective(wgl.projectionMatrix, wgl.fovy, wgl.aspect, wgl.zNear, wgl.zFar);
+    
+    mat4.identity(wgl.modelViewMatrix); // Reset to identity
+    mat4.lookAt(wgl.modelViewMatrix, wgl.eye, wgl.lookAt, wgl.up); // To eye coordinates
+    // Final changes made based on input
+    mat4.multiply(wgl.modelViewMatrix, wgl.modelViewMatrix, wgl.viewMatrix); 
+
+    wgl.uploadPMatrix();
+    wgl.uploadMvMatrix();
+    
+    // ------------------------------------
+    // Draw all objects
+    // ------------------------------------    
+    for (let i = 0; i < 3; i++) { //wgl.numberOfModels; i++) {
+        wgl.listOfDrawables[i].draw(deltaTime);
+    }
 }
 
-// ------------------------------------------------------------------------
-// Create a render function that holds gl and wgl in scope.
-// ------------------------------------------------------------------------
-function createRenderFunction(gl, wgl) {
+// -------------------------------------------------------------------------------------------------
+// ----------------------------- Initialization Related functions ----------------------------------
+// -------------------------------------------------------------------------------------------------
+// Create a GL context with a given canvas.
+// -------------------------------------------------------------------------------------------------
+function createGLContext(canvas) {
+    var context = canvas.getContext("webgl");
+    if (!context) {
+        alert("Unable to initialize WebGL.");
+        return;
+    }
+    context.viewportWidth  = canvas.width;
+    context.viewportHeight = canvas.height;
+    return context;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Create a render loop function that holds gl, wgl, and draw function in scope.
+// -------------------------------------------------------------------------------------------------
+function createRenderFunction(gl, wgl, drawScene) {
+    var prevTime = 0; // The previous frame time
     function render(currTime) {
         // Handle timing
         currTime *= 0.001;              // Convert millis to seconds
@@ -56,164 +96,42 @@ function createRenderFunction(gl, wgl) {
     return render;
 }
 
-// ------------------------------------------------------------------------
-// Rotate the view by the andle around the specified axis vec3.
-// ------------------------------------------------------------------------
-function rotateView(wgl, rads, axisVec) {
-    // Get the rotation matrix
-    var rotation = mat4.create();
-    mat4.fromRotation(rotation, rads, axisVec);
-    // Rotate the view matrix
-    mat4.multiply(wgl.viewMatrix, rotation, wgl.viewMatrix);
+// -------------------------------------------------------------------------------------------------
+// Creates a shader of given type, uploads the source and compiles it.
+// -------------------------------------------------------------------------------------------------
+function loadShader(gl, type, source) {
+    const shader = gl.createShader(type);
+
+    // Send source to the shader
+    gl.shaderSource(shader, source);
+    // Compile shader program
+    gl.compileShader(shader);
+
+    // Alert if it failed
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
+        alert("Error occured compiling the " 
+            + (type ==  gl.VERTEX_SHADER ? "vertex" : "fragment") + " shader: " 
+            + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+    }
+
+    return shader;
 }
 
-// ------------------------------------------------------------------------
-// Handle key presses.
-// ------------------------------------------------------------------------
-function handlePressedDownKeys(wgl) {  
-    // Zoom functions
-    if (wgl.listOfPressedKeys[90]) { // z - zoom in
-        wgl.fovy = Math.min(wgl.fovy * 1.1, Math.PI - 0.1);
-    } 
-    if (wgl.listOfPressedKeys[88]) { // x - zoom out
-        wgl.fovy = Math.max(wgl.fovy * 0.9, 0.1);
-    } 
-    // Cube functions
-    if (wgl.listOfPressedKeys[67]) { // c - scale cube up
-       cubeScale = Math.min(cubeScale + 0.1, 5);
-    } 
-    if (wgl.listOfPressedKeys[86]) { // v - scale cube down
-       cubeScale = Math.max(cubeScale - 0.1, 0.1);
-    } 
-    // Camera movement functions
-    if (wgl.listOfPressedKeys[37]) { // left
-        rotateView(wgl, -5 * Math.PI / 180, wgl.upVec);
-    } 
-    if (wgl.listOfPressedKeys[39]) { // right
-        rotateView(wgl, 5 * Math.PI / 180, wgl.upVec);
-    } 
-    if (wgl.listOfPressedKeys[38]) { // up
-        rotateView(wgl, 5 * Math.PI / 180, wgl.rightVec);
-    }
-    if (wgl.listOfPressedKeys[40]) { // down
-        rotateView(wgl, -5 * Math.PI / 180, wgl.rightVec);
-    }  
-    if (wgl.listOfPressedKeys[82]) { // r - reset camera
-       mat4.identity(wgl.viewMatrix);
-    } 
+// -------------------------------------------------------------------------------------------------
+// --------------------------------- Initialization functions --------------------------------------
+// -------------------------------------------------------------------------------------------------
+// Initialize state that will be affected by lost context.
+// -------------------------------------------------------------------------------------------------
+function init(gl, wgl) {
+    initShaders(gl, wgl);                   // Setup the shader program and program info
+    initModels(gl, wgl);                    // Build objects to be drawn and their buffers
+    initGl(gl, wgl);                        // Setup gl properties
 }
-
-// ------------------------------------------------------------------------
-// Handle mouse movement.
-// ------------------------------------------------------------------------
-function handleMouseMovement(wgl) {
-    if (!wgl.mouseDown) return;
-    // Record change in mouse position
-    var dX = wgl.currX - wgl.prevX;
-    var dY = wgl.currY - wgl.prevY;
-    // Rotate accordingly
-    rotateView(wgl, dX * Math.PI / 180, wgl.upVec);     // x movement -> rot around up axis
-    rotateView(wgl, -dY * Math.PI / 180, wgl.rightVec); // y movement -> rot around right axis
-}
-
-// ------------------------------------------------------------------------
-// Initialize and add listeners to the canvas.
-// ------------------------------------------------------------------------
-function initListeners(gl, wgl, canvas, render) {
-    // ------------------------------------ 
-    // Lost context related
-    // ------------------------------------ 
-    function handleContextLost(event) {
-        event.preventDefault(); // Prevent default action that context will not be restored
-        cancelAnimationFrame(wgl.requestId);
-    }
-    function handleContextRestored(event) {
-        init(gl, wgl);
-        requestAnimationFrame(render);
-    }
-
-    canvas.addEventListener('webglcontextlost', handleContextLost, false);
-    canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
-    // Uncomment for simulating lost context.
-    // window.addEventListener('mousedown', () => canvas.loseContext());
-    
-    // ------------------------------------ 
-    // Mouse related
-    // ------------------------------------ 
-    wgl.prevX = undefined; wgl.prevY = undefined; // Keep track of position
-    wgl.currX = undefined; wgl.currY = undefined;
-    wgl.mouseDown = false;
-    function handleMouseDown(event) {
-        wgl.mouseDown = true;
-        wgl.prevX = event.clientX; wgl.prevY = event.clientY;
-        wgl.currX = event.clientX; wgl.currY = event.clientY;
-        // console.log("mouseDown, clientX=%d, clientY=%d, button=%d", 
-        //              event.clientX, event.clientY, event.button);
-    }
-    function handleMouseUp(event) {
-        wgl.mouseDown = false;
-        wgl.prevX = undefined; wgl.prevY = undefined;
-        wgl.currX = undefined; wgl.currY = undefined;
-        // console.log("mouseUp, clientX=%d, clientY=%d, button=%d", 
-        //              event.clientX, event.clientY, event.button);
-    }
-    function handleMouseMove(event) {
-        // Update previous mouse position
-        wgl.prevX = wgl.currX;     wgl.prevY = wgl.currY;
-        // Record current mouse position 
-        wgl.currX = event.clientX; wgl.currY = event.clientY;
-        // console.log("mouseMove, clientX=%d, clientY=%d, button=%d", 
-        //              event.clientX, event.clientY, event.button);
-    }
-    document.addEventListener('mousedown', handleMouseDown, false);
-    document.addEventListener('mouseup', handleMouseUp, false);
-    document.addEventListener('mousemove', handleMouseMove, false);
-
-    // ------------------------------------ 
-    // Keyboard related
-    // ------------------------------------ 
-
-    wgl.listOfPressedKeys = []; // Keep track of pressed down keys
-    function handleKeyDown(event) {
-        wgl.listOfPressedKeys[event.keyCode] = true;
-        // console.log("keydown - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
-    }
-    function handleKeyUp(event) {
-        wgl.listOfPressedKeys[event.keyCode] = false;
-        // console.log("keyup - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
-    }
-    function handleKeyPress(event) {} // Doesn't do anything
-    document.addEventListener('keydown', handleKeyDown, false);
-    document.addEventListener('keyup', handleKeyUp, false);
-    document.addEventListener('keypress', handleKeyPress, false);
-
-    // ------------------------------------ 
-    // Provide instructions
-    // ------------------------------------ 
-    console.log(
-            "Controls:\n" +
-            "Left click and drag: Rotate view\n" +
-            "z/x: zoom in/out\n" +
-            "Arrow keys: rotate the view.");
-}
-
-// ------------------------------------------------------------------------
-// Create a GL context with a given canvas.
-// ------------------------------------------------------------------------
-function createGLContext(canvas) {
-    var context = canvas.getContext("webgl");
-    if (!context) {
-        alert("Unable to initialize WebGL.");
-        return;
-    }
-    context.viewportWidth  = canvas.width;
-    context.viewportHeight = canvas.height;
-    return context;
-}
-
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Set up the shader program and program info.
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 function initShaders(gl, wgl) {
     // Initialize shader program with source from vs.vert and fs.frag
     const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
@@ -250,59 +168,9 @@ function initShaders(gl, wgl) {
     };
 }
 
-// ------------------------------------------------------------------------
-// Set up the stack functionality of the wgl object.
-// ------------------------------------------------------------------------
-function initMatrixStack(gl, wgl) {
-    wgl.modelViewMatrix  = mat4.create();
-    wgl.projectionMatrix = mat4.create();
-    wgl.modelViewMatrixStack = [];
-
-    wgl.pushMatrix = function() {
-        var copyToPush = mat4.create();
-        mat4.copy(copyToPush, wgl.modelViewMatrix);
-        wgl.modelViewMatrixStack.push(copyToPush);
-    }
-    wgl.popMatrix = function() {
-        if (wgl.modelViewMatrixStack.length == 0) {
-            throw "Error wgl.popMatrix() - Stack was empty ";
-        }
-        wgl.modelViewMatrix = wgl.modelViewMatrixStack.pop();
-    }
-    wgl.uploadMvMatrix = function() {
-        gl.uniformMatrix4fv(wgl.uniformLocations.mvMatrix, false, wgl.modelViewMatrix);
-    }
-    wgl.uploadPMatrix = function() {
-        gl.uniformMatrix4fv(wgl.uniformLocations.pMatrix, false, wgl.projectionMatrix);
-    }
-}
-
-// ------------------------------------------------------------------------
-// Creates a shader of given type, uploads the source and compiles it.
-// ------------------------------------------------------------------------
-function loadShader(gl, type, source) {
-    const shader = gl.createShader(type);
-
-    // Send source to the shader
-    gl.shaderSource(shader, source);
-    // Compile shader program
-    gl.compileShader(shader);
-
-    // Alert if it failed
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
-        alert("Error occured compiling the " 
-            + (type ==  gl.VERTEX_SHADER ? "vertex" : "fragment") + " shader: " 
-            + gl.getShaderInfoLog(shader));
-        gl.deleteShader(shader);
-        return null;
-    }
-
-    return shader;
-}
-
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Initializes the models and buffers to be drawn in this scene.
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 function initModels(gl, wgl) {
     // ------------------------------------
     // Floor model
@@ -476,9 +344,147 @@ function initModels(gl, wgl) {
     }
 }
 
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Initialize the gl properties.
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+function initGl(gl, wgl) {
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.clearDepth(1.0);
+    gl.depthFunc(gl.LEQUAL); // Near things obscure far things
+
+    // For perspective matrix setup
+    wgl.fovy   = 60 * Math.PI / 180;
+    wgl.aspect = gl.viewportWidth / gl.viewportHeight;
+    wgl.zNear  = 0.1;
+    wgl.zFar   = 100.0;
+
+    wgl.eye    = [ 8,   5, -10 ];
+    wgl.lookAt = [ 0,   0,   0 ];
+    wgl.up     = [ 0,   1,   0 ];
+
+    // Camera movement setup
+    wgl.upVec      = vec3.fromValues(0, 1, 0); // Up axis for camera movement
+    wgl.rightVec   = vec3.create();            // Right axis for camera movement
+    { // "Right vector" for camera movement
+        var eyeToOrigin = vec3.fromValues(-wgl.eye[0], -wgl.eye[1], -wgl.eye[2]);
+        vec3.normalize(eyeToOrigin, eyeToOrigin);
+        vec3.cross(wgl.rightVec, wgl.upVec, eyeToOrigin);
+    }
+    wgl.viewMatrix = mat4.create(); // For rotation of view
+}
+
+// -------------------------------------------------------------------------------------------------
+// Initialize and add listeners to the canvas.
+// -------------------------------------------------------------------------------------------------
+function initListeners(gl, wgl, canvas, render) {
+    // ------------------------------------ 
+    // Lost context related
+    // ------------------------------------ 
+    function handleContextLost(event) {
+        event.preventDefault(); // Prevent default action that context will not be restored
+        cancelAnimationFrame(wgl.requestId);
+    }
+    function handleContextRestored(event) {
+        init(gl, wgl);
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+    // Uncomment for simulating lost context.
+    // window.addEventListener('mousedown', () => canvas.loseContext());
+    
+    // ------------------------------------ 
+    // Mouse related
+    // ------------------------------------ 
+    wgl.prevX = undefined; wgl.prevY = undefined; // Keep track of position
+    wgl.currX = undefined; wgl.currY = undefined;
+    wgl.mouseDown = false;
+    function handleMouseDown(event) {
+        wgl.mouseDown = true;
+        wgl.prevX = event.clientX; wgl.prevY = event.clientY;
+        wgl.currX = event.clientX; wgl.currY = event.clientY;
+        // console.log("mouseDown, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    function handleMouseUp(event) {
+        wgl.mouseDown = false;
+        wgl.prevX = undefined; wgl.prevY = undefined;
+        wgl.currX = undefined; wgl.currY = undefined;
+        // console.log("mouseUp, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    function handleMouseMove(event) {
+        // Update previous mouse position
+        wgl.prevX = wgl.currX;     wgl.prevY = wgl.currY;
+        // Record current mouse position 
+        wgl.currX = event.clientX; wgl.currY = event.clientY;
+        // console.log("mouseMove, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    document.addEventListener('mousedown', handleMouseDown, false);
+    document.addEventListener('mouseup', handleMouseUp, false);
+    document.addEventListener('mousemove', handleMouseMove, false);
+
+    // ------------------------------------ 
+    // Keyboard related
+    // ------------------------------------ 
+
+    wgl.listOfPressedKeys = []; // Keep track of pressed down keys
+    function handleKeyDown(event) {
+        wgl.listOfPressedKeys[event.keyCode] = true;
+        // console.log("keydown - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
+    }
+    function handleKeyUp(event) {
+        wgl.listOfPressedKeys[event.keyCode] = false;
+        // console.log("keyup - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
+    }
+    function handleKeyPress(event) {} // Doesn't do anything
+    document.addEventListener('keydown', handleKeyDown, false);
+    document.addEventListener('keyup', handleKeyUp, false);
+    document.addEventListener('keypress', handleKeyPress, false);
+
+    // ------------------------------------ 
+    // Provide instructions
+    // ------------------------------------ 
+    console.log(
+            "Controls:\n" +
+            "Left click and drag: Rotate view\n" +
+            "z/x: zoom in/out\n" +
+            "Arrow keys: rotate the view.");
+}
+
+// -------------------------------------------------------------------------------------------------
+// Set up the stack functionality of the wgl object.
+// -------------------------------------------------------------------------------------------------
+function initMatrixStack(gl, wgl) {
+    wgl.modelViewMatrix  = mat4.create();
+    wgl.projectionMatrix = mat4.create();
+    wgl.modelViewMatrixStack = [];
+
+    wgl.pushMatrix = function() {
+        var copyToPush = mat4.create();
+        mat4.copy(copyToPush, wgl.modelViewMatrix);
+        wgl.modelViewMatrixStack.push(copyToPush);
+    }
+    wgl.popMatrix = function() {
+        if (wgl.modelViewMatrixStack.length == 0) {
+            throw "Error wgl.popMatrix() - Stack was empty ";
+        }
+        wgl.modelViewMatrix = wgl.modelViewMatrixStack.pop();
+    }
+    wgl.uploadMvMatrix = function() {
+        gl.uniformMatrix4fv(wgl.uniformLocations.mvMatrix, false, wgl.modelViewMatrix);
+    }
+    wgl.uploadPMatrix = function() {
+        gl.uniformMatrix4fv(wgl.uniformLocations.pMatrix, false, wgl.projectionMatrix);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Initialize the gl properties.
+// -------------------------------------------------------------------------------------------------
 function initDrawables(gl, wgl) {
     // ------------------------------------
     // Instructions to draw floor
@@ -569,61 +575,64 @@ function initDrawables(gl, wgl) {
     wgl.listOfDrawables = [ floor, cube, table ];
 }
 
-
-// ------------------------------------------------------------------------
-// Initialize the gl properties.
-// ------------------------------------------------------------------------
-function initGl(gl, wgl) {
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.clearDepth(1.0);
-    gl.depthFunc(gl.LEQUAL); // Near things obscure far things
-
-    // For perspective matrix setup
-    wgl.fovy   = 60 * Math.PI / 180;
-    wgl.aspect = gl.viewportWidth / gl.viewportHeight;
-    wgl.zNear  = 0.1;
-    wgl.zFar   = 100.0;
-
-    wgl.eye    = [ 8,   5, -10 ];
-    wgl.lookAt = [ 0,   0,   0 ];
-    wgl.up     = [ 0,   1,   0 ];
-
-    // Camera movement setup
-    wgl.upVec      = vec3.fromValues(0, 1, 0); // Up axis for camera movement
-    wgl.rightVec   = vec3.create();            // Right axis for camera movement
-    { // "Right vector" for camera movement
-        var eyeToOrigin = vec3.fromValues(-wgl.eye[0], -wgl.eye[1], -wgl.eye[2]);
-        vec3.normalize(eyeToOrigin, eyeToOrigin);
-        vec3.cross(wgl.rightVec, wgl.upVec, eyeToOrigin);
-    }
-    wgl.viewMatrix = mat4.create(); // For rotation of view
+// -------------------------------------------------------------------------------------------------
+// ----------------------------------- Interaction functions ---------------------------------------
+// -------------------------------------------------------------------------------------------------
+// Rotate the view by the andle around the specified axis vec3.
+// -------------------------------------------------------------------------------------------------
+function rotateView(wgl, rads, axisVec) {
+    // Get the rotation matrix
+    var rotation = mat4.create();
+    mat4.fromRotation(rotation, rads, axisVec);
+    // Rotate the view matrix
+    mat4.multiply(wgl.viewMatrix, rotation, wgl.viewMatrix);
 }
 
-// ------------------------------------------------------------------------
-// Draw the scene
-// ------------------------------------------------------------------------
-function drawScene(gl, wgl, deltaTime) {
-    // ------------------------------------
-    // General GL setup/drawing related
-    // ------------------------------------
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
-    mat4.perspective(wgl.projectionMatrix, wgl.fovy, wgl.aspect, wgl.zNear, wgl.zFar);
-    
-    mat4.identity(wgl.modelViewMatrix); // Reset to identity
-    mat4.lookAt(wgl.modelViewMatrix, wgl.eye, wgl.lookAt, wgl.up); // To eye coordinates
-    // Final changes made based on input
-    mat4.multiply(wgl.modelViewMatrix, wgl.modelViewMatrix, wgl.viewMatrix); 
-
-    wgl.uploadPMatrix();
-    wgl.uploadMvMatrix();
-    
-    // ------------------------------------
-    // Draw all objects
-    // ------------------------------------    
-    for (let i = 0; i < 3; i++) { //wgl.numberOfModels; i++) {
-        wgl.listOfDrawables[i].draw(deltaTime);
+// -------------------------------------------------------------------------------------------------
+// Handle key presses.
+// -------------------------------------------------------------------------------------------------
+function handlePressedDownKeys(wgl) {  
+    // Zoom functions
+    if (wgl.listOfPressedKeys[90]) { // z - zoom in
+        wgl.fovy = Math.min(wgl.fovy * 1.1, Math.PI - 0.1);
+    } 
+    if (wgl.listOfPressedKeys[88]) { // x - zoom out
+        wgl.fovy = Math.max(wgl.fovy * 0.9, 0.1);
+    } 
+    // Cube functions
+    if (wgl.listOfPressedKeys[67]) { // c - scale cube up
+       cubeScale = Math.min(cubeScale + 0.1, 5);
+    } 
+    if (wgl.listOfPressedKeys[86]) { // v - scale cube down
+       cubeScale = Math.max(cubeScale - 0.1, 0.1);
+    } 
+    // Camera movement functions
+    if (wgl.listOfPressedKeys[37]) { // left
+        rotateView(wgl, -5 * Math.PI / 180, wgl.upVec);
+    } 
+    if (wgl.listOfPressedKeys[39]) { // right
+        rotateView(wgl, 5 * Math.PI / 180, wgl.upVec);
+    } 
+    if (wgl.listOfPressedKeys[38]) { // up
+        rotateView(wgl, 5 * Math.PI / 180, wgl.rightVec);
     }
+    if (wgl.listOfPressedKeys[40]) { // down
+        rotateView(wgl, -5 * Math.PI / 180, wgl.rightVec);
+    }  
+    if (wgl.listOfPressedKeys[82]) { // r - reset camera
+       mat4.identity(wgl.viewMatrix);
+    } 
+}
+
+// -------------------------------------------------------------------------------------------------
+// Handle mouse movement.
+// -------------------------------------------------------------------------------------------------
+function handleMouseMovement(wgl) {
+    if (!wgl.mouseDown) return;
+    // Record change in mouse position
+    var dX = wgl.currX - wgl.prevX;
+    var dY = wgl.currY - wgl.prevY;
+    // Rotate accordingly
+    rotateView(wgl, dX * Math.PI / 180, wgl.upVec);     // x movement -> rot around up axis
+    rotateView(wgl, -dY * Math.PI / 180, wgl.rightVec); // y movement -> rot around right axis
 }
