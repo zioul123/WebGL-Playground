@@ -151,20 +151,32 @@ function initShaders(gl, wgl) {
     gl.useProgram(shaderProgram); // Use the program
    
     // Get attribute and uniform locations
-    const vertexPosition = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
-    const vertexColor    = gl.getAttribLocation(shaderProgram, 'aVertexColor');
-    const mvMatrix       = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-    const pMatrix        = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+    const vertexPosition     = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
+    const vertexNormal       = gl.getAttribLocation(shaderProgram, 'aVertexNormal');
+    const vertexColor        = gl.getAttribLocation(shaderProgram, 'aVertexColor');
+    const mvMatrix           = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
+    const pMatrix            = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+    const nMatrix            = gl.getUniformLocation(shaderProgram, 'uNMatrix');
+    const lightPosition      = gl.getUniformLocation(shaderProgram, 'uLightPosition');
+    const ambientLightColor  = gl.getUniformLocation(shaderProgram, 'uAmbientLightColor');
+    const diffuseLightColor  = gl.getUniformLocation(shaderProgram, 'uDiffuseLightColor');
+    const specularLightColor = gl.getUniformLocation(shaderProgram, 'uSpecularLightColor');
 
     // Put the program info in the wgl object
     wgl.shaderProgram    = shaderProgram;
     wgl.attribLocations  = { 
         vertexPosition: vertexPosition,
+        vertexNormal:   vertexNormal,
         vertexColor:    vertexColor, 
     };
     wgl.uniformLocations = {
-        mvMatrix: mvMatrix,
-        pMatrix:  pMatrix,
+        mvMatrix:           mvMatrix,
+        pMatrix:            pMatrix,
+        nMatrix:            nMatrix,
+        lightPosition:      lightPosition,
+        ambientLightColor:  ambientLightColor,
+        diffuseLightColor:  diffuseLightColor,
+        specularLightColor: specularLightColor,
     };
 }
 
