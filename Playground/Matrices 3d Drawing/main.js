@@ -47,6 +47,8 @@ function createRenderFunction(gl, wgl) {
         prevTime = currTime;
         // Handle keypress events
         handlePressedDownKeys(gl, wgl);
+        // Handle mouse movement
+        
         // Draw and request next frame
         drawScene(gl, wgl, deltaTime);
         wgl.requestId = requestAnimationFrame(render);
@@ -123,11 +125,48 @@ function initListeners(gl, wgl, canvas, render) {
     // window.addEventListener('mousedown', () => canvas.loseContext());
     
     // ------------------------------------ 
+    // Mouse related
+    // ------------------------------------ 
+    wgl.prevX = undefined; wgl.prevY = undefined; // Keep track of position
+    wgl.mouseDown = false;
+    function handleMouseDown(event) {
+        wgl.mouseDown = true;
+        wgl.prevX = event.clientX;
+        wgl.prevY = event.clientY;
+        // console.log("mouseDown, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    function handleMouseUp(event) {
+        wgl.mouseDown = false;
+        wgl.prevX = undefined;
+        wgl.prevY = undefined;
+        // console.log("mouseUp, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    function handleMouseMove(event) {
+        // Only rotate view if mouse is held down
+        if (!wgl.mouseDown) return;
+
+        // Record change in mouse position
+        var dX = event.clientX - wgl.prevX;
+        var dY = event.clientY - wgl.prevY;
+        // Rotate accordingly
+        rotateView(wgl, dX * Math.PI / 180, wgl.upVec);     // x movement -> rot around up axis
+        rotateView(wgl, -dY * Math.PI / 180, wgl.rightVec); // y movement -> rot around right axis
+        // Update previous mouse position
+        wgl.prevX  = event.clientX;
+        wgl.prevY  = event.clientY;
+        // console.log("mouseMove, clientX=%d, clientY=%d, button=%d", 
+        //              event.clientX, event.clientY, event.button);
+    }
+    document.addEventListener('mousedown', handleMouseDown, false);
+    document.addEventListener('mouseup', handleMouseUp, false);
+    document.addEventListener('mousemove', handleMouseMove, false);
+
+    // ------------------------------------ 
     // Keyboard related
     // ------------------------------------ 
-    console.log("Controls:\n" +
-            "z/x: zoom in/out\n" +
-            "Arrow keys: rotate the view.");
+
     wgl.listOfPressedKeys = []; // Keep track of pressed down keys
     function handleKeyDown(event) {
         wgl.listOfPressedKeys[event.keyCode] = true;
@@ -141,6 +180,15 @@ function initListeners(gl, wgl, canvas, render) {
     document.addEventListener('keydown', handleKeyDown, false);
     document.addEventListener('keyup', handleKeyUp, false);
     document.addEventListener('keypress', handleKeyPress, false);
+
+    // ------------------------------------ 
+    // Provide instructions
+    // ------------------------------------ 
+    console.log(
+            "Controls:\n" +
+            "Left click and drag: Rotate view\n" +
+            "z/x: zoom in/out\n" +
+            "Arrow keys: rotate the view.");
 }
 
 // ------------------------------------------------------------------------
