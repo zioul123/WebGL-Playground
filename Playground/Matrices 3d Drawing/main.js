@@ -6,6 +6,7 @@ main();
 var prevTime     = 0; // Previous frame time
 
 var cubeAngle    = 0; // Angle of the cube
+var cubeScale    = 1; // Scale of the cube
 const cubePeriod = 2; // 2s per round
 const cubeRadius = 5; // 5 units away
 
@@ -20,14 +21,19 @@ function main() {
     const wgl = {};                 // The object to hold all web gl information
     const render = createRenderFunction(gl, wgl);
 
+    init(gl, wgl); // Initialize shaders, models/buffers and gl properties
+
     initListeners(gl, wgl, canvas, render); // Add listeners to the canvas
-    initShaders(gl, wgl);                   // Setup the shader program and program info
     initMatrixStack(gl, wgl);               // Setup the stack functionality
-    initModels(gl, wgl);                    // Build objects to be drawn and their buffers
     initDrawables(gl, wgl);                 // Prepare the drawn objects
-    initGl(gl, wgl);                        // Setup gl properties
     
     wgl.requestId = requestAnimationFrame(render); // Draw the scene repeadedly
+}
+
+function init(gl, wgl) {
+    initShaders(gl, wgl);                   // Setup the shader program and program info
+    initModels(gl, wgl);                    // Build objects to be drawn and their buffers
+    initGl(gl, wgl);                        // Setup gl properties
 }
 
 // ------------------------------------------------------------------------
@@ -39,6 +45,8 @@ function createRenderFunction(gl, wgl) {
         currTime *= 0.001;              // Convert millis to seconds
         const deltaTime = currTime - prevTime;
         prevTime = currTime;
+        // Handle keypress events
+        handlePressedDownKeys(gl, wgl);
         // Draw and request next frame
         drawScene(gl, wgl, deltaTime);
         wgl.requestId = requestAnimationFrame(render);
@@ -47,17 +55,65 @@ function createRenderFunction(gl, wgl) {
 }
 
 // ------------------------------------------------------------------------
+// Rotate the view by the andle around the specified axis vec3.
+// ------------------------------------------------------------------------
+function rotateView(wgl, rads, axisVec) {
+    // Get the rotation matrix
+    var rotation = mat4.create();
+    mat4.fromRotation(rotation, rads, axisVec);
+    // Rotate the view matrix
+    mat4.multiply(wgl.viewMatrix, rotation, wgl.viewMatrix);
+}
+
+// ------------------------------------------------------------------------
+// Handle key presses.
+// ------------------------------------------------------------------------
+function handlePressedDownKeys(gl, wgl) {  
+    // Zoom functions
+    if (wgl.listOfPressedKeys[90]) { // z - zoom in
+        wgl.fovy = Math.min(wgl.fovy * 1.1, Math.PI - 0.1);
+    } 
+    if (wgl.listOfPressedKeys[88]) { // x - zoom out
+        wgl.fovy = Math.max(wgl.fovy * 0.9, 0.1);
+    } 
+    // Cube functions
+    if (wgl.listOfPressedKeys[67]) { // c - scale cube up
+       cubeScale = Math.min(cubeScale + 0.1, 5);
+    } 
+    if (wgl.listOfPressedKeys[86]) { // v - scale cube down
+       cubeScale = Math.max(cubeScale - 0.1, 0.1);
+    } 
+    // Camera movement functions
+    if (wgl.listOfPressedKeys[37]) { // left
+        rotateView(wgl, -5 * Math.PI / 180, wgl.upVec);
+    } 
+    if (wgl.listOfPressedKeys[39]) { // right
+        rotateView(wgl, 5 * Math.PI / 180, wgl.upVec);
+    } 
+    if (wgl.listOfPressedKeys[38]) { // up
+        rotateView(wgl, 5 * Math.PI / 180, wgl.rightVec);
+    }
+    if (wgl.listOfPressedKeys[40]) { // down
+        rotateView(wgl, -5 * Math.PI / 180, wgl.rightVec);
+    }  
+    if (wgl.listOfPressedKeys[82]) { // r - reset camera
+       mat4.identity(wgl.viewMatrix);
+    } 
+}
+
+// ------------------------------------------------------------------------
 // Initialize and add listeners to the canvas.
 // ------------------------------------------------------------------------
 function initListeners(gl, wgl, canvas, render) {
+    // ------------------------------------ 
+    // Lost context related
+    // ------------------------------------ 
     function handleContextLost(event) {
         event.preventDefault(); // Prevent default action that context will not be restored
         cancelAnimationFrame(wgl.requestId);
     }
     function handleContextRestored(event) {
-        initShaders(gl, wgl);
-        initModels(gl, wgl);
-        initGl(gl, wgl);
+        init(gl, wgl);
         requestAnimationFrame(render);
     }
 
@@ -65,6 +121,26 @@ function initListeners(gl, wgl, canvas, render) {
     canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
     // Uncomment for simulating lost context.
     // window.addEventListener('mousedown', () => canvas.loseContext());
+    
+    // ------------------------------------ 
+    // Keyboard related
+    // ------------------------------------ 
+    console.log("Controls:\n" +
+            "z/x: zoom in/out\n" +
+            "Arrow keys: rotate the view.");
+    wgl.listOfPressedKeys = []; // Keep track of pressed down keys
+    function handleKeyDown(event) {
+        wgl.listOfPressedKeys[event.keyCode] = true;
+        // console.log("keydown - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
+    }
+    function handleKeyUp(event) {
+        wgl.listOfPressedKeys[event.keyCode] = false;
+        // console.log("keyup - keyCode=%d, charCode=%d", event.keyCode, event.charCode);
+    }
+    function handleKeyPress(event) {} // Doesn't do anything
+    document.addEventListener('keydown', handleKeyDown, false);
+    document.addEventListener('keyup', handleKeyUp, false);
+    document.addEventListener('keypress', handleKeyPress, false);
 }
 
 // ------------------------------------------------------------------------
@@ -365,6 +441,7 @@ function initDrawables(gl, wgl) {
             wgl.popMatrix();
         }
     };
+
     // ------------------------------------
     // Instructions to draw cube
     // ------------------------------------ 
@@ -384,6 +461,10 @@ function initDrawables(gl, wgl) {
                 mat4.rotate(wgl.modelViewMatrix, wgl.modelViewMatrix, -cubeAngle, axis);
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
                 
+                // User input based scale
+                mat4.scale(wgl.modelViewMatrix, wgl.modelViewMatrix, 
+                           [ cubeScale, cubeScale, cubeScale ]);
+
                 wgl.uploadMvMatrix();
 
                 wgl.models.cube.drawElements();
@@ -453,6 +534,16 @@ function initGl(gl, wgl) {
     wgl.eye    = [ 8,   5, -10 ];
     wgl.lookAt = [ 0,   0,   0 ];
     wgl.up     = [ 0,   1,   0 ];
+
+    // Camera movement setup
+    wgl.upVec      = vec3.fromValues(0, 1, 0); // Up axis for camera movement
+    wgl.rightVec   = vec3.create();            // Right axis for camera movement
+    { // "Right vector" for camera movement
+        var eyeToOrigin = vec3.fromValues(-wgl.eye[0], -wgl.eye[1], -wgl.eye[2]);
+        vec3.normalize(eyeToOrigin, eyeToOrigin);
+        vec3.cross(wgl.rightVec, wgl.upVec, eyeToOrigin);
+    }
+    wgl.viewMatrix = mat4.create(); // For rotation of view
 }
 
 // ------------------------------------------------------------------------
@@ -467,8 +558,10 @@ function drawScene(gl, wgl, deltaTime) {
     
     mat4.perspective(wgl.projectionMatrix, wgl.fovy, wgl.aspect, wgl.zNear, wgl.zFar);
     
-    mat4.identity(wgl.modelViewMatrix);
-    mat4.lookAt(wgl.modelViewMatrix, wgl.eye, wgl.lookAt, wgl.up);
+    mat4.identity(wgl.modelViewMatrix); // Reset to identity
+    mat4.lookAt(wgl.modelViewMatrix, wgl.eye, wgl.lookAt, wgl.up); // To eye coordinates
+    // Final changes made based on input
+    mat4.multiply(wgl.modelViewMatrix, wgl.modelViewMatrix, wgl.viewMatrix); 
 
     wgl.uploadPMatrix();
     wgl.uploadMvMatrix();
