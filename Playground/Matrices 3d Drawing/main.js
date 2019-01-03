@@ -46,9 +46,9 @@ function createRenderFunction(gl, wgl) {
         const deltaTime = currTime - prevTime;
         prevTime = currTime;
         // Handle keypress events
-        handlePressedDownKeys(gl, wgl);
+        handlePressedDownKeys(wgl);
         // Handle mouse movement
-        
+        handleMouseMovement(wgl);
         // Draw and request next frame
         drawScene(gl, wgl, deltaTime);
         wgl.requestId = requestAnimationFrame(render);
@@ -70,7 +70,7 @@ function rotateView(wgl, rads, axisVec) {
 // ------------------------------------------------------------------------
 // Handle key presses.
 // ------------------------------------------------------------------------
-function handlePressedDownKeys(gl, wgl) {  
+function handlePressedDownKeys(wgl) {  
     // Zoom functions
     if (wgl.listOfPressedKeys[90]) { // z - zoom in
         wgl.fovy = Math.min(wgl.fovy * 1.1, Math.PI - 0.1);
@@ -104,6 +104,19 @@ function handlePressedDownKeys(gl, wgl) {
 }
 
 // ------------------------------------------------------------------------
+// Handle mouse movement.
+// ------------------------------------------------------------------------
+function handleMouseMovement(wgl) {
+    if (!wgl.mouseDown) return;
+    // Record change in mouse position
+    var dX = wgl.currX - wgl.prevX;
+    var dY = wgl.currY - wgl.prevY;
+    // Rotate accordingly
+    rotateView(wgl, dX * Math.PI / 180, wgl.upVec);     // x movement -> rot around up axis
+    rotateView(wgl, -dY * Math.PI / 180, wgl.rightVec); // y movement -> rot around right axis
+}
+
+// ------------------------------------------------------------------------
 // Initialize and add listeners to the canvas.
 // ------------------------------------------------------------------------
 function initListeners(gl, wgl, canvas, render) {
@@ -128,34 +141,27 @@ function initListeners(gl, wgl, canvas, render) {
     // Mouse related
     // ------------------------------------ 
     wgl.prevX = undefined; wgl.prevY = undefined; // Keep track of position
+    wgl.currX = undefined; wgl.currY = undefined;
     wgl.mouseDown = false;
     function handleMouseDown(event) {
         wgl.mouseDown = true;
-        wgl.prevX = event.clientX;
-        wgl.prevY = event.clientY;
+        wgl.prevX = event.clientX; wgl.prevY = event.clientY;
+        wgl.currX = event.clientX; wgl.currY = event.clientY;
         // console.log("mouseDown, clientX=%d, clientY=%d, button=%d", 
         //              event.clientX, event.clientY, event.button);
     }
     function handleMouseUp(event) {
         wgl.mouseDown = false;
-        wgl.prevX = undefined;
-        wgl.prevY = undefined;
+        wgl.prevX = undefined; wgl.prevY = undefined;
+        wgl.currX = undefined; wgl.currY = undefined;
         // console.log("mouseUp, clientX=%d, clientY=%d, button=%d", 
         //              event.clientX, event.clientY, event.button);
     }
     function handleMouseMove(event) {
-        // Only rotate view if mouse is held down
-        if (!wgl.mouseDown) return;
-
-        // Record change in mouse position
-        var dX = event.clientX - wgl.prevX;
-        var dY = event.clientY - wgl.prevY;
-        // Rotate accordingly
-        rotateView(wgl, dX * Math.PI / 180, wgl.upVec);     // x movement -> rot around up axis
-        rotateView(wgl, -dY * Math.PI / 180, wgl.rightVec); // y movement -> rot around right axis
         // Update previous mouse position
-        wgl.prevX  = event.clientX;
-        wgl.prevY  = event.clientY;
+        wgl.prevX = wgl.currX;     wgl.prevY = wgl.currY;
+        // Record current mouse position 
+        wgl.currX = event.clientX; wgl.currY = event.clientY;
         // console.log("mouseMove, clientX=%d, clientY=%d, button=%d", 
         //              event.clientX, event.clientY, event.button);
     }
