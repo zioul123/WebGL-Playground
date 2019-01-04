@@ -9,3 +9,4 @@ This is the repo I use to store my WebGL experiments.
 * Multiple 3D Objects, Colors (Not Textures):
   * No Lighting: [here](https://zioul123.github.io/WebGL-Playground/Playground/Multiple%20Objects%2C%20Matrices%2C%20Colors/Matrices%203d%20Drawing%20Color/Matrix3d.html).
   * Gouraud Shading: [here](https://zioul123.github.io/WebGL-Playground/Playground/Multiple%20Objects%2C%20Matrices%2C%20Colors/Matrices%203d%20Drawing%20Gouraud%20Color/Matrix3d.html).
+  * Phong Shading: [here](https://zioul123.github.io/WebGL-Playground/Playground/Multiple%20Objects%2C%20Matrices%2C%20Colors/Matrices%203d%20Drawing%20Phong%20Color/Matrix3d.html).
