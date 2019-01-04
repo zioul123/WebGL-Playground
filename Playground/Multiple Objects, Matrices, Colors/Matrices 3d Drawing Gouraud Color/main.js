@@ -127,6 +127,7 @@ function loadShader(gl, type, source) {
 function init(gl, wgl) {
     initShaders(gl, wgl);                   // Setup the shader program and program info
     initModels(gl, wgl);                    // Build objects to be drawn and their buffers
+    initLights(gl, wgl);                    // Setup lighting
     initGl(gl, wgl);                        // Setup gl properties
 }
 // -------------------------------------------------------------------------------------------------
@@ -151,20 +152,32 @@ function initShaders(gl, wgl) {
     gl.useProgram(shaderProgram); // Use the program
    
     // Get attribute and uniform locations
-    const vertexPosition = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
-    const vertexColor    = gl.getAttribLocation(shaderProgram, 'aVertexColor');
-    const mvMatrix       = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
-    const pMatrix        = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+    const vertexPosition     = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
+    const vertexNormal       = gl.getAttribLocation(shaderProgram, 'aVertexNormal');
+    const vertexColor        = gl.getAttribLocation(shaderProgram, 'aVertexColor');
+    const mvMatrix           = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
+    const pMatrix            = gl.getUniformLocation(shaderProgram, 'uPMatrix');
+    const nMatrix            = gl.getUniformLocation(shaderProgram, 'uNMatrix');
+    const lightPosition      = gl.getUniformLocation(shaderProgram, 'uLightPosition');
+    const ambientLightColor  = gl.getUniformLocation(shaderProgram, 'uAmbientLightColor');
+    const diffuseLightColor  = gl.getUniformLocation(shaderProgram, 'uDiffuseLightColor');
+    const specularLightColor = gl.getUniformLocation(shaderProgram, 'uSpecularLightColor');
 
     // Put the program info in the wgl object
     wgl.shaderProgram    = shaderProgram;
     wgl.attribLocations  = { 
         vertexPosition: vertexPosition,
+        vertexNormal:   vertexNormal,
         vertexColor:    vertexColor, 
     };
     wgl.uniformLocations = {
-        mvMatrix: mvMatrix,
-        pMatrix:  pMatrix,
+        mvMatrix:           mvMatrix,
+        pMatrix:            pMatrix,
+        nMatrix:            nMatrix,
+        lightPosition:      lightPosition,
+        ambientLightColor:  ambientLightColor,
+        diffuseLightColor:  diffuseLightColor,
+        specularLightColor: specularLightColor,
     };
 }
 
@@ -182,6 +195,9 @@ function initModels(gl, wgl) {
         floorModel.vertexPositionBuffer         = gl.createBuffer();
         floorModel.vertexPositionBufferItemSize = 3;
         floorModel.vertexPositionBufferNumItems = 4;
+        floorModel.vertexNormalBuffer           = gl.createBuffer();
+        floorModel.vertexNormalBufferItemSize   = 3;
+        floorModel.vertexNormalBufferNumItems   = 4;
         floorModel.vertexIndexBuffer            = gl.createBuffer();
         floorModel.vertexIndexBufferItemSize    = 1;
         floorModel.vertexIndexBufferNumItems    = 4;
@@ -195,6 +211,16 @@ function initModels(gl, wgl) {
         ];
         gl.bindBuffer(gl.ARRAY_BUFFER, floorModel.vertexPositionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(floorVertexPositions), gl.STATIC_DRAW);
+        
+        // Fill vertex normal buffer
+        const floorVertexNormals = [
+             0.0, 1.0, 0.0, // v0
+             0.0, 1.0, 0.0, // v1
+             0.0, 1.0, 0.0, // v2
+             0.0, 1.0, 0.0, // v3
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, floorModel.vertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(floorVertexNormals), gl.STATIC_DRAW);
 
         // Fill element index buffer
         const floorVertexIndices = [ 0, 1, 2, 3 ];
@@ -219,13 +245,23 @@ function initModels(gl, wgl) {
         }
         // Vertex positions
         {
-            const stride = 0; const offset = 0; const norm   = false;
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
 
             gl.enableVertexAttribArray(wgl.attribLocations.vertexPosition);
             gl.bindBuffer(gl.ARRAY_BUFFER, floorModel.vertexPositionBuffer);
             gl.vertexAttribPointer(wgl.attribLocations.vertexPosition,
                                    floorModel.vertexPositionBufferItemSize,
-                                   gl.FLOAT, norm, stride, offset);
+                                   type, norm, stride, offset);
+        }
+        // Vertex normals
+        {
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
+
+            gl.enableVertexAttribArray(wgl.attribLocations.vertexNormal);
+            gl.bindBuffer(gl.ARRAY_BUFFER, floorModel.vertexNormalBuffer);
+            gl.vertexAttribPointer(wgl.attribLocations.vertexNormal,
+                                   floorModel.vertexNormalBufferItemSize,
+                                   type, norm, stride, offset);
         }
         // Element indices
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, floorModel.vertexIndexBuffer);
@@ -245,6 +281,9 @@ function initModels(gl, wgl) {
         cubeModel.vertexPositionBuffer         = gl.createBuffer();
         cubeModel.vertexPositionBufferItemSize = 3;
         cubeModel.vertexPositionBufferNumItems = 24;
+        cubeModel.vertexNormalBuffer           = gl.createBuffer();
+        cubeModel.vertexNormalBufferItemSize   = 3;
+        cubeModel.vertexNormalBufferNumItems   = 24;
         cubeModel.vertexIndexBuffer            = gl.createBuffer();
         cubeModel.vertexIndexBufferItemSize    = 1;
         cubeModel.vertexIndexBufferNumItems    = 36;
@@ -289,6 +328,46 @@ function initModels(gl, wgl) {
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeModel.vertexPositionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertexPositions), gl.STATIC_DRAW);
 
+        const cubeVertexNormals = [
+            // Front
+             0.0,  0.0,  1.0,
+             0.0,  0.0,  1.0,
+             0.0,  0.0,  1.0,
+             0.0,  0.0,  1.0,
+
+            // Back
+             0.0,  0.0, -1.0,
+             0.0,  0.0, -1.0,
+             0.0,  0.0, -1.0,
+             0.0,  0.0, -1.0,
+
+            // Top
+             0.0,  1.0,  0.0,
+             0.0,  1.0,  0.0,
+             0.0,  1.0,  0.0,
+             0.0,  1.0,  0.0,
+
+            // Bottom
+             0.0, -1.0,  0.0,
+             0.0, -1.0,  0.0,
+             0.0, -1.0,  0.0,
+             0.0, -1.0,  0.0,
+
+            // Right
+             1.0,  0.0,  0.0,
+             1.0,  0.0,  0.0,
+             1.0,  0.0,  0.0,
+             1.0,  0.0,  0.0,
+
+            // Left
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0,
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeModel.vertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertexNormals), gl.STATIC_DRAW);
+
         const cubeVertexIndices = [
             0,  1,   2,      0,  2,  3, // front
             4,  5,   6,      4,  6,  7, // back
@@ -318,13 +397,23 @@ function initModels(gl, wgl) {
         }
         // Vertex positions
         {
-            const stride = 0; const offset = 0; const norm   = false;
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
 
             gl.enableVertexAttribArray(wgl.attribLocations.vertexPosition);
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeModel.vertexPositionBuffer);
             gl.vertexAttribPointer(wgl.attribLocations.vertexPosition,
                                    cubeModel.vertexPositionBufferItemSize,
-                                   gl.FLOAT, norm, stride, offset);
+                                   type, norm, stride, offset);
+        }
+        // Vertex normals
+        {
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
+
+            gl.enableVertexAttribArray(wgl.attribLocations.vertexNormal);
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeModel.vertexNormalBuffer);
+            gl.vertexAttribPointer(wgl.attribLocations.vertexNormal,
+                                   cubeModel.vertexNormalBufferItemSize,
+                                   type, norm, stride, offset);
         }
         // Element indices
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeModel.vertexIndexBuffer);
@@ -342,6 +431,16 @@ function initModels(gl, wgl) {
         floor: floorModel,
         cube:  cubeModel,
     }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Initializes the light settings in this scene.
+// -------------------------------------------------------------------------------------------------
+function initLights(gl, wgl) {
+    gl.uniform3fv(wgl.uniformLocations.lightPosition, [ 0.0, 20.0, 0.0 ]);
+    gl.uniform3fv(wgl.uniformLocations.ambientLightColor, [ 0.2, 0.2, 0.2 ]);
+    gl.uniform3fv(wgl.uniformLocations.diffuseLightColor, [ 0.7, 0.7, 0.7 ]);
+    gl.uniform3fv(wgl.uniformLocations.specularLightColor, [ 0.8, 0.8, 0.8 ]);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -456,7 +555,7 @@ function initListeners(gl, wgl, canvas, render) {
 }
 
 // -------------------------------------------------------------------------------------------------
-// Set up the stack functionality of the wgl object.
+// Set up the matrix and matrix stack functionality of the wgl object.
 // -------------------------------------------------------------------------------------------------
 function initMatrixStack(gl, wgl) {
     wgl.modelViewMatrix  = mat4.create();
@@ -477,8 +576,13 @@ function initMatrixStack(gl, wgl) {
     wgl.uploadMvMatrix = function() {
         gl.uniformMatrix4fv(wgl.uniformLocations.mvMatrix, false, wgl.modelViewMatrix);
     }
-    wgl.uploadPMatrix = function() {
+    wgl.uploadPMatrix  = function() {
         gl.uniformMatrix4fv(wgl.uniformLocations.pMatrix, false, wgl.projectionMatrix);
+    }
+    wgl.uploadNMatrix  = function() {
+        var normalMatrix = mat3.create();
+        mat3.normalFromMat4(normalMatrix, wgl.modelViewMatrix);
+        gl.uniformMatrix3fv(wgl.uniformLocations.nMatrix, false, normalMatrix);
     }
 }
 
@@ -496,6 +600,7 @@ function initDrawables(gl, wgl) {
                 const trans = [ 0, -1, 0 ];
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
                 wgl.uploadMvMatrix();
+                wgl.uploadNMatrix();
 
                 wgl.models.floor.drawElements();
             wgl.popMatrix();
@@ -507,7 +612,7 @@ function initDrawables(gl, wgl) {
     // ------------------------------------ 
     cube = {
         draw: function(deltaTime) {
-            wgl.models.cube.setupAttributes();
+            wgl.models.cube.setupAttributes([0.5, 0.8, 0.3, 1.0]);
             wgl.pushMatrix();
                 const axis  = [ 0, 1, 0 ];
 
@@ -526,6 +631,7 @@ function initDrawables(gl, wgl) {
                            [ cubeScale, cubeScale, cubeScale ]);
 
                 wgl.uploadMvMatrix();
+                wgl.uploadNMatrix();
 
                 wgl.models.cube.drawElements();
             wgl.popMatrix();
@@ -546,6 +652,7 @@ function initDrawables(gl, wgl) {
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, tableTopYTrans);
                 mat4.scale(wgl.modelViewMatrix, wgl.modelViewMatrix, tableTopScale);
                 wgl.uploadMvMatrix();
+                wgl.uploadNMatrix();
 
                 wgl.models.cube.drawElements();
             wgl.popMatrix();
@@ -562,6 +669,7 @@ function initDrawables(gl, wgl) {
                         mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
                         mat4.scale(wgl.modelViewMatrix, wgl.modelViewMatrix, scale);
                         wgl.uploadMvMatrix();
+                        wgl.uploadNMatrix();
 
                         wgl.models.cube.drawElements();
                     wgl.popMatrix();
