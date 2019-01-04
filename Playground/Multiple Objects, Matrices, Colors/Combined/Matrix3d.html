@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Matrix 3D Drawing - Different Shading Models</title>
+        <meta charset="utf-8">
+    </head> 
+    <body onload = "main();">
+        <h1>Matrix 3D Drawing</h1>
+        <canvas id="glcanvas" width=640 height="480"></canvas>
+        <p>Controls</p>
+        <p>Left click and drag: Rotate view</p>
+        <p>z/x: zoom in/out</p>
+        <p>Arrow keys: rotate the view</p>
+        <p>1, 2, 3: Change between no lighting, Gouraud shading, and Phong shading</p>
+    </body>
+    <script src="../../../libs/gl-matrix.js"></script>
+    <script src="../../../libs/webgl-debug.js"></script>
+    <script src="vs.vert"></script>
+    <script src="fs.frag"></script>
+    <script src="main.js"></script>
+</html>
