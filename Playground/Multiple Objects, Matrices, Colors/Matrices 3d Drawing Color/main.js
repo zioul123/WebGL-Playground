@@ -507,7 +507,7 @@ function initDrawables(gl, wgl) {
     // ------------------------------------ 
     cube = {
         draw: function(deltaTime) {
-            wgl.models.cube.setupAttributes();
+            wgl.models.cube.setupAttributes([0.5, 0.8, 0.3, 1.0]);
             wgl.pushMatrix();
                 const axis  = [ 0, 1, 0 ];
 
