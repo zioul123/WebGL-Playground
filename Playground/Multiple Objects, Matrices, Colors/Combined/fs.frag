@@ -38,6 +38,9 @@ const fsSourcePhong = `
     varying vec3 vNormalVec;
 
     const float shininess = 32.0;
+    const float att0      =  1.0;
+    const float att1      =  0.1;
+    const float att2      =  0.0005; // Normally 0.05, but distance is 20 instead of 1
 
     void main()
     {
@@ -50,10 +53,14 @@ const fsSourcePhong = `
         float nDotL = max(dot(vNormalVec, lightVec), 0.0);
         float rDotV = max(dot(reflectVec, viewVec), 0.0);
 
+        // Attenuation function
+        float distance = length(vec3(uLightPosition - vWorldVertexPos));
+        float att      = 1.0 / (att0 + att2 * distance * distance);
+
         // Drawing light
         vec3 vLightWeighting = uAmbientLightColor
-                             + uDiffuseLightColor * nDotL
-                             + uSpecularLightColor * pow(rDotV, shininess);
+                             + att * uDiffuseLightColor * nDotL
+                             + att * uSpecularLightColor * pow(rDotV, shininess);
 
         gl_FragColor = vec4(vColor.xyz * vLightWeighting, vColor.a);
     }
