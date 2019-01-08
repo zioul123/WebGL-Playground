@@ -59,10 +59,22 @@ function drawScene(gl, wgl, deltaTime) {
     wgl.uploadMvMatrix();
     
     // ------------------------------------
-    // Draw all objects
+    // Draw all opaque objects
     // ------------------------------------    
-    for (let i = 0; i < wgl.numberOfDrawables; i++) {
-        wgl.listOfDrawables[i].draw(deltaTime);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    for (let i = 0; i < wgl.numberOfOpaqueDrawables; i++) {
+        wgl.listOfOpaqueDrawables[i].draw(deltaTime);
+    }
+
+    // ------------------------------------
+    // Draw all transparent objects
+    // ------------------------------------  
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    for (let i = 0; i < wgl.numberOfTransparentDrawables; i++) {
+        wgl.listOfTransparentDrawables[i].draw(deltaTime);
     }
 }
 
@@ -550,7 +562,7 @@ function initModels(gl, wgl) {
         {
             var r, g, b, a;
             if (colors == null) {
-                a = 1.0, r = g = b = 0.7; // grey cylinder
+                a = 0.5, r = g = 0.3, b = 0.7; // blueish cylinder
             } else { 
                 r = colors[0]; g = colors[1]; b = colors[2]; a = colors[3];
             }
@@ -620,9 +632,9 @@ function initLights(gl, wgl) {
 // -------------------------------------------------------------------------------------------------
 function initGl(gl, wgl) {
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.enable(gl.DEPTH_TEST);
     gl.clearDepth(1.0);
-    gl.depthFunc(gl.LEQUAL); // Near things obscure far things
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    // gl.depthFunc(gl.LEQUAL); // Near things obscure far things
 
     // For perspective matrix setup
     wgl.fovy   = 60 * Math.PI / 180;
@@ -876,8 +888,10 @@ function initDrawables(gl, wgl) {
     }
 
     // Put drawables into wgl
-    wgl.numberOfDrawables = 4;
-    wgl.listOfDrawables = [ floor, cube, table, cylinder ];
+    wgl.numberOfOpaqueDrawables = 3;
+    wgl.listOfOpaqueDrawables = [ floor, cube, table ];
+    wgl.numberOfTransparentDrawables = 1;
+    wgl.listOfTransparentDrawables = [ cylinder ];
 }
 
 // -------------------------------------------------------------------------------------------------
