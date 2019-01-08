@@ -208,15 +208,15 @@ function initModels(gl, wgl) {
     // Set up buffers
     floorModel.setupBuffers = function() {
         // Set up data
-        floorModel.vertexPositionBuffer         = gl.createBuffer();
-        floorModel.vertexPositionBufferItemSize = 3;
-        floorModel.vertexPositionBufferNumItems = 4;
-        floorModel.vertexNormalBuffer           = gl.createBuffer();
-        floorModel.vertexNormalBufferItemSize   = 3;
-        floorModel.vertexNormalBufferNumItems   = 4;
-        floorModel.vertexIndexBuffer            = gl.createBuffer();
-        floorModel.vertexIndexBufferItemSize    = 1;
-        floorModel.vertexIndexBufferRoundNumItems    = 4;
+        floorModel.vertexPositionBuffer           = gl.createBuffer();
+        floorModel.vertexPositionBufferItemSize   = 3;
+        floorModel.vertexPositionBufferNumItems   = 4;
+        floorModel.vertexNormalBuffer             = gl.createBuffer();
+        floorModel.vertexNormalBufferItemSize     = 3;
+        floorModel.vertexNormalBufferNumItems     = 4;
+        floorModel.vertexIndexBuffer              = gl.createBuffer();
+        floorModel.vertexIndexBufferItemSize      = 1;
+        floorModel.vertexIndexBufferRoundNumItems = 4;
 
         // Fill vertex position buffer
         const floorVertexPositions = [
@@ -294,15 +294,15 @@ function initModels(gl, wgl) {
     cubeModel = {};
     // Set up buffers
     cubeModel.setupBuffers = function() {
-        cubeModel.vertexPositionBuffer         = gl.createBuffer();
-        cubeModel.vertexPositionBufferItemSize = 3;
-        cubeModel.vertexPositionBufferNumItems = 24;
-        cubeModel.vertexNormalBuffer           = gl.createBuffer();
-        cubeModel.vertexNormalBufferItemSize   = 3;
-        cubeModel.vertexNormalBufferNumItems   = 24;
-        cubeModel.vertexIndexBuffer            = gl.createBuffer();
-        cubeModel.vertexIndexBufferItemSize    = 1;
-        cubeModel.vertexIndexBufferRoundNumItems    = 36;
+        cubeModel.vertexPositionBuffer           = gl.createBuffer();
+        cubeModel.vertexPositionBufferItemSize   = 3;
+        cubeModel.vertexPositionBufferNumItems   = 24;
+        cubeModel.vertexNormalBuffer             = gl.createBuffer();
+        cubeModel.vertexNormalBufferItemSize     = 3;
+        cubeModel.vertexNormalBufferNumItems     = 24;
+        cubeModel.vertexIndexBuffer              = gl.createBuffer();
+        cubeModel.vertexIndexBufferItemSize      = 1;
+        cubeModel.vertexIndexBufferRoundNumItems = 36;
 
         const cubeVertexPositions = [
             // Front face
@@ -451,23 +451,22 @@ function initModels(gl, wgl) {
     const h = 1;  // Height of the cylinder
     // Set up buffers
     cylinderModel.setupBuffers = function() {
-        cylinderModel.vertexPositionBuffer         = gl.createBuffer();
-        cylinderModel.vertexPositionBufferItemSize = 3;
-        cylinderModel.vertexPositionBufferNumItems = n * m;
-        cylinderModel.vertexNormalBuffer           = gl.createBuffer();
-        cylinderModel.vertexNormalBufferItemSize   = 3;
-        cylinderModel.vertexNormalBufferNumItems   = n * m;
-        cylinderModel.vertexIndexBufferRound       = gl.createBuffer();
-        cylinderModel.vertexIndexBufferLidBot      = gl.createBuffer();
-        cylinderModel.vertexIndexBufferLidTop      = gl.createBuffer();
-        cylinderModel.vertexIndexBufferItemSize    = 1;
         const numTStrips = m; // 10
         const verticesPerStrip = 2 * n + 2; // 22
         const degenTPerStrip = 2; // 2
-
+        cylinderModel.vertexPositionBuffer           = gl.createBuffer();
+        cylinderModel.vertexPositionBufferItemSize   = 3;
+        cylinderModel.vertexPositionBufferNumItems   = n * m;
+        cylinderModel.vertexNormalBuffer             = gl.createBuffer();
+        cylinderModel.vertexNormalBufferItemSize     = 3;
+        cylinderModel.vertexNormalBufferNumItems     = n * m;
+        cylinderModel.vertexIndexBufferRound         = gl.createBuffer();
+        cylinderModel.vertexIndexBufferLidBot        = gl.createBuffer();
+        cylinderModel.vertexIndexBufferLidTop        = gl.createBuffer();
+        cylinderModel.vertexIndexBufferItemSize      = 1;
         cylinderModel.vertexIndexBufferRoundNumItems = numTStrips * (verticesPerStrip 
-                 + degenTPerStrip) - degenTPerStrip; // Last row doesn't have degen T
-        cylinderModel.vertexIndexBufferLidNumItems = n;
+                 + degenTPerStrip) - degenTPerStrip; // Last row doesn't have degen triangles
+        cylinderModel.vertexIndexBufferLidNumItems   = n;
 
         const cylinderVertexPositions = [];
         const cylinderVertexNormals = [];
