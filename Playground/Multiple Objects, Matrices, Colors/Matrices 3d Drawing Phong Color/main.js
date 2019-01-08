@@ -767,7 +767,7 @@ function initDrawables(gl, wgl) {
         draw: function(deltaTime) {
             wgl.models.floor.setupAttributes();
             wgl.pushMatrix();
-                const trans = [ 0, -1, 0 ];
+                const trans = [ 0, -1.001, 0 ];
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
                 wgl.uploadMvMatrix();
                 wgl.uploadNMatrix();
