@@ -279,11 +279,11 @@ function initModels(gl, wgl) {
                                    floorModel.vertexNormalBufferItemSize,
                                    type, norm, stride, offset);
         }
-        // Element indices
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, floorModel.vertexIndexBuffer);
     }
     floorModel.drawElements = function() {
         const offset = 0;
+        // Element indices
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, floorModel.vertexIndexBuffer);
         gl.drawElements(gl.TRIANGLE_FAN, floorModel.vertexIndexBufferRoundNumItems,
                         gl.UNSIGNED_SHORT, offset);
     }
@@ -431,16 +431,16 @@ function initModels(gl, wgl) {
                                    cubeModel.vertexNormalBufferItemSize,
                                    type, norm, stride, offset);
         }
-        // Element indices
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeModel.vertexIndexBuffer);
     }
     cubeModel.drawElements = function() {
         const offset = 0;
+        // Element indices
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeModel.vertexIndexBuffer);
         gl.drawElements(gl.TRIANGLES, cubeModel.vertexIndexBufferRoundNumItems,
                         gl.UNSIGNED_SHORT, offset);
     }
 
-        // ------------------------------------
+    // ------------------------------------
     // Cube model
     // ------------------------------------ 
     cylinderModel = {};
