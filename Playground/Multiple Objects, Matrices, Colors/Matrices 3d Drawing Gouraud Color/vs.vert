@@ -11,11 +11,10 @@ uniform vec3 uLightPosition;
 uniform vec3 uAmbientLightColor;    // Ka * Ia
 uniform vec3 uDiffuseLightColor;    // Kd * Id
 uniform vec3 uSpecularLightColor;   // Ks * Is
+uniform float shininess;
 
 varying vec3 vLightWeighting;
 varying vec4 vColor; 
-
-const float shininess = 32.0;
 
 void main() 
 {
