@@ -11,7 +11,7 @@ const cubeRadius = 5; // 5 units away
 
 // Cylinder drawing related
 var cylinderAngle = 0; 
-const cylinderPeriod = 1; // 1s per round
+const cylinderPeriod = 4; // 4s per round
 
 // -------------------------------------------------------------------------------------------------
 // ----------------------------------- Interaction functions ---------------------------------------
@@ -216,7 +216,7 @@ function initModels(gl, wgl) {
         floorModel.vertexNormalBufferNumItems   = 4;
         floorModel.vertexIndexBuffer            = gl.createBuffer();
         floorModel.vertexIndexBufferItemSize    = 1;
-        floorModel.vertexIndexBufferNumItems    = 4;
+        floorModel.vertexIndexBufferRoundNumItems    = 4;
 
         // Fill vertex position buffer
         const floorVertexPositions = [
@@ -284,7 +284,7 @@ function initModels(gl, wgl) {
     }
     floorModel.drawElements = function() {
         const offset = 0;
-        gl.drawElements(gl.TRIANGLE_FAN, floorModel.vertexIndexBufferNumItems,
+        gl.drawElements(gl.TRIANGLE_FAN, floorModel.vertexIndexBufferRoundNumItems,
                         gl.UNSIGNED_SHORT, offset);
     }
 
@@ -302,7 +302,7 @@ function initModels(gl, wgl) {
         cubeModel.vertexNormalBufferNumItems   = 24;
         cubeModel.vertexIndexBuffer            = gl.createBuffer();
         cubeModel.vertexIndexBufferItemSize    = 1;
-        cubeModel.vertexIndexBufferNumItems    = 36;
+        cubeModel.vertexIndexBufferRoundNumItems    = 36;
 
         const cubeVertexPositions = [
             // Front face
@@ -436,7 +436,7 @@ function initModels(gl, wgl) {
     }
     cubeModel.drawElements = function() {
         const offset = 0;
-        gl.drawElements(gl.TRIANGLES, cubeModel.vertexIndexBufferNumItems,
+        gl.drawElements(gl.TRIANGLES, cubeModel.vertexIndexBufferRoundNumItems,
                         gl.UNSIGNED_SHORT, offset);
     }
 
@@ -457,17 +457,22 @@ function initModels(gl, wgl) {
         cylinderModel.vertexNormalBuffer           = gl.createBuffer();
         cylinderModel.vertexNormalBufferItemSize   = 3;
         cylinderModel.vertexNormalBufferNumItems   = n * m;
-        cylinderModel.vertexIndexBuffer            = gl.createBuffer();
+        cylinderModel.vertexIndexBufferRound       = gl.createBuffer();
+        cylinderModel.vertexIndexBufferLidBot      = gl.createBuffer();
+        cylinderModel.vertexIndexBufferLidTop      = gl.createBuffer();
         cylinderModel.vertexIndexBufferItemSize    = 1;
-        const numTStrips = m - 1; // 9
+        const numTStrips = m; // 10
         const verticesPerStrip = 2 * n + 2; // 22
         const degenTPerStrip = 2; // 2
-        cylinderModel.vertexIndexBufferNumItems = numTStrips * (verticesPerStrip + degenTPerStrip)
-                                                - degenTPerStrip; // Last row doesn't have degen T
+
+        cylinderModel.vertexIndexBufferRoundNumItems = numTStrips * (verticesPerStrip 
+                 + degenTPerStrip) - degenTPerStrip; // Last row doesn't have degen T
+        cylinderModel.vertexIndexBufferLidNumItems = n;
 
         const cylinderVertexPositions = [];
         const cylinderVertexNormals = [];
-        for (let j = 0; j < m; j++) { // One height
+        // Round part
+        for (let j = 0; j <= m; j++) { // One height
             const y = j / m * h;
             for (let i = 0; i < n; i++) { // Points along circumference
                 const t = i / n * 2 * Math.PI;
@@ -477,6 +482,17 @@ function initModels(gl, wgl) {
                 cylinderVertexNormals.push(x / r, 0, z / r); 
             }
         }
+        // Lid part
+        for (let topBot = 0; topBot < 2; topBot++) { // Bottom lid (n elements) then top.
+            for (let i = 0; i < n; i++) {
+                const t = i / n * 2 * Math.PI;
+                const x = r * Math.cos(t);
+                const z = r * Math.sin(t);
+                cylinderVertexPositions.push(x, (topBot == 0 ? 0 : h), z);
+                cylinderVertexNormals.push(0, (topBot == 0 ? -1 : 1), 0); 
+            }
+        }
+
         // Vertex positions
         gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexPositionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinderVertexPositions), gl.STATIC_DRAW);
@@ -484,24 +500,46 @@ function initModels(gl, wgl) {
         gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexNormalBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinderVertexNormals), gl.STATIC_DRAW);
 
-        const cylinderVertexIndices = [];
-        const totalPerStrip = verticesPerStrip + degenTPerStrip;
-        for (let j = 0; j < m - 1; j++) { // Each strip
-            // If not first row, add degenerate triangles
-            if (j != 0) {
-                cylinderVertexIndices.push((j - 1) * n, (j + 1) * n);
+        // Rounded part indices (triangle strips)
+        const cylinderVertexIndicesRound = [];
+        { 
+            for (let j = 0; j < m; j++) { // Each strip
+                // If not first row, add degenerate triangles
+                if (j != 0) {
+                    cylinderVertexIndicesRound.push((j - 1) * n, (j + 1) * n);
+                }
+                // First 4 vertices
+                cylinderVertexIndicesRound.push((j + 1) * n, j * n, (j + 1) * n + 1, j * n + 1);
+                // Other vertices
+                for (let i = 2; i < n; i++) { // Each vertex
+                    cylinderVertexIndicesRound.push((j + 1) * n + i, j * n + i);
+                }
+                // Last 2 vertices
+                cylinderVertexIndicesRound.push((j + 1) * n, j * n);
             }
-            // First 4 vertices
-            cylinderVertexIndices.push((j + 1) * n, j * n, (j + 1) * n + 1, j * n + 1);
-            // Other vertices
-            for (let i = 2; i < n; i++) { // Each vertex
-                cylinderVertexIndices.push((j + 1) * n + i, j * n + i);
-            }
-            // Last 2 vertices
-            cylinderVertexIndices.push((j + 1) * n, j * n);
         }
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylinderVertexIndices), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferRound);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylinderVertexIndicesRound), 
+                      gl.STATIC_DRAW);
+
+        // Lid indices (triangle fans)
+        const cylinderVertexIndicesLidBot = [];
+        const cylinderVertexIndicesLidTop = [];
+        {
+            for (let i = 0; i < n; i++) { 
+                cylinderVertexIndicesLidBot.push((m + 1) * n + i);
+                cylinderVertexIndicesLidTop.push((m + 2) * n + i);
+            }
+        }
+        // Bottom lid
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferLidBot);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylinderVertexIndicesLidBot), 
+                      gl.STATIC_DRAW);
+        // Top lid
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferLidTop);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylinderVertexIndicesLidTop), 
+                      gl.STATIC_DRAW);
+        
     }
     cylinderModel.setupBuffers();
 
@@ -539,12 +577,20 @@ function initModels(gl, wgl) {
                                    cylinderModel.vertexNormalBufferItemSize,
                                    type, norm, stride, offset);
         }
-        // Element indices
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBuffer);
     }
     cylinderModel.drawElements = function() {
         const offset = 0;
-        gl.drawElements(gl.TRIANGLE_STRIP, cylinderModel.vertexIndexBufferNumItems,
+        // Round part
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferRound);
+        gl.drawElements(gl.TRIANGLE_STRIP, cylinderModel.vertexIndexBufferRoundNumItems,
+                        gl.UNSIGNED_SHORT, offset);
+        // Bottom Lid
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferLidBot);
+        gl.drawElements(gl.TRIANGLE_FAN, cylinderModel.vertexIndexBufferLidNumItems,
+                        gl.UNSIGNED_SHORT, offset);
+        // Top Lid
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBufferLidTop);
+        gl.drawElements(gl.TRIANGLE_FAN, cylinderModel.vertexIndexBufferLidNumItems,
                         gl.UNSIGNED_SHORT, offset);
     }
 
