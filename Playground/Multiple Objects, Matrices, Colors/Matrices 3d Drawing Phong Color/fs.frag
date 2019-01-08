@@ -5,12 +5,12 @@ uniform vec3 uLightPosition;
 uniform vec3 uAmbientLightColor;    // Ka * Ia
 uniform vec3 uDiffuseLightColor;    // Kd * Id
 uniform vec3 uSpecularLightColor;   // Ks * Is
+uniform float shininess;
 
 varying vec4 vColor;
 varying vec3 vWorldVertexPos;
 varying vec3 vNormalVec;
 
-const float shininess = 32.0;
 const float att0      =  1.0;
 const float att1      =  0.1;
 const float att2      =  0.0005; // Normally 0.05, but distance is 20 instead of 1
