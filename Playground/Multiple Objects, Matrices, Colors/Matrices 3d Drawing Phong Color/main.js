@@ -441,7 +441,7 @@ function initModels(gl, wgl) {
     }
 
     // ------------------------------------
-    // Cube model
+    // Cylinder model
     // ------------------------------------ 
     cylinderModel = {};
     // Make sure n and m are even, otherwise degenerate triangles must be adjusted
