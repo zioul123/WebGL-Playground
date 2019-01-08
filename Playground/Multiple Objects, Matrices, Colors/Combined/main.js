@@ -185,6 +185,7 @@ function initShaders(gl, wgl) {
     const vertexPosition     = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
     const vertexNormal       = gl.getAttribLocation(shaderProgram, 'aVertexNormal');
     const vertexColor        = gl.getAttribLocation(shaderProgram, 'aVertexColor');
+    const shininess          = gl.getUniformLocation(shaderProgram, 'shininess');
     const mvMatrix           = gl.getUniformLocation(shaderProgram, 'uMVMatrix');
     const pMatrix            = gl.getUniformLocation(shaderProgram, 'uPMatrix');
     const nMatrix            = gl.getUniformLocation(shaderProgram, 'uNMatrix');
@@ -201,6 +202,7 @@ function initShaders(gl, wgl) {
         vertexColor:    vertexColor, 
     };
     wgl.uniformLocations = {
+        shininess:          shininess,
         mvMatrix:           mvMatrix,
         pMatrix:            pMatrix,
         nMatrix:            nMatrix,
@@ -232,9 +234,10 @@ function initModels(gl, wgl) {
         floorModel.vertexIndexBufferItemSize      = 1;
         floorModel.vertexIndexBufferRoundNumItems = 4;
         // Color related (floor is the least shiny object)
-        floorModel.ambientReflectivity            = vec3.fromValues(0.8, 0.8, 0.8);
-        floorModel.diffuseReflectivity            = vec3.fromValues(0.5, 0.5, 0.5);
-        floorModel.specularReflectivity           = vec3.fromValues(0.3, 0.3, 0.3);
+        floorModel.shininess                      = 1.0;
+        floorModel.ambientReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
+        floorModel.diffuseReflectivity            = vec3.fromValues(0.8, 0.8, 0.8);
+        floorModel.specularReflectivity           = vec3.fromValues(0.4, 0.4, 0.4);
 
         // Fill vertex position buffer
         const floorVertexPositions = [
@@ -325,9 +328,10 @@ function initModels(gl, wgl) {
         cubeModel.vertexIndexBufferItemSize      = 1;
         cubeModel.vertexIndexBufferRoundNumItems = 36;
         // Color related (cube is moderately shiny)
+        cubeModel.shininess                      = 60.0;
         cubeModel.ambientReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
-        cubeModel.diffuseReflectivity            = vec3.fromValues(0.7, 0.7, 0.7);
-        cubeModel.specularReflectivity           = vec3.fromValues(0.6, 0.6, 0.6);
+        cubeModel.diffuseReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
+        cubeModel.specularReflectivity           = vec3.fromValues(1.0, 1.0, 1.0);
 
         const cubeVertexPositions = [
             // Front face
@@ -495,7 +499,8 @@ function initModels(gl, wgl) {
         cylinderModel.vertexIndexBufferRoundNumItems = numTStrips * (verticesPerStrip 
                  + degenTPerStrip) - degenTPerStrip; // Last row doesn't have degen triangles
         cylinderModel.vertexIndexBufferLidNumItems   = n;
-        // Color related (cylinder is the shiny object)
+        // Color related (cylinder is the most shiny object)
+        cylinderModel.shininess                      = 90.0;
         cylinderModel.ambientReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
         cylinderModel.diffuseReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
         cylinderModel.specularReflectivity           = vec3.fromValues(1.0, 1.0, 1.0);
@@ -919,11 +924,12 @@ function initDrawables(gl, wgl) {
 function setupLightForObject(gl, wgl, model) {
     var vec = vec3.create(); // Placeholder vector to store outputs of vec3.multiply
     gl.uniform3fv(wgl.uniformLocations.ambientLightColor, 
-                  multiply(vec, model.ambientReflectivity, wgl.ambientLight));
+                  vec3.multiply(vec, model.ambientReflectivity, wgl.ambientLight));
     gl.uniform3fv(wgl.uniformLocations.diffuseLightColor, 
-                  multiply(vec, model.diffuseReflectivity, wgl.diffuseLight));
+                  vec3.multiply(vec, model.diffuseReflectivity, wgl.diffuseLight));
     gl.uniform3fv(wgl.uniformLocations.specularLightColor,
-                  multiply(vec, model.specularReflectivity, wgl.specularLight));
+                  vec3.multiply(vec, model.specularReflectivity, wgl.specularLight));
+    gl.uniform1f(wgl.uniformLocations.shininess, model.shininess);
 }
 
 // -------------------------------------------------------------------------------------------------
