@@ -55,7 +55,7 @@ function drawScene(gl, wgl, deltaTime) {
     // ------------------------------------
     // Draw all objects
     // ------------------------------------    
-    for (let i = 0; i < 3; i++) { //wgl.numberOfModels; i++) {
+    for (let i = 0; i < wgl.numberOfDrawables; i++) { 
         wgl.listOfDrawables[i].draw(deltaTime);
     }
 }
@@ -436,12 +436,121 @@ function initModels(gl, wgl) {
                         gl.UNSIGNED_SHORT, offset);
     }
 
+        // ------------------------------------
+    // Cube model
+    // ------------------------------------ 
+    cylinderModel = {};
+    // Make sure n and m are even, otherwise degenerate triangles must be adjusted
+    const n = 20; // Vertices along the circumference
+    const m = 10; // Vertices along the height
+    const r = 1;  // Radius of the cylinder
+    const h = 1;  // Height of the cylinder
+    // Set up buffers
+    cylinderModel.setupBuffers = function() {
+        cylinderModel.vertexPositionBuffer         = gl.createBuffer();
+        cylinderModel.vertexPositionBufferItemSize = 3;
+        cylinderModel.vertexPositionBufferNumItems = n * m;
+        cylinderModel.vertexNormalBuffer           = gl.createBuffer();
+        cylinderModel.vertexNormalBufferItemSize   = 3;
+        cylinderModel.vertexNormalBufferNumItems   = n * m;
+        cylinderModel.vertexIndexBuffer            = gl.createBuffer();
+        cylinderModel.vertexIndexBufferItemSize    = 1;
+        const numTStrips = m - 1; // 9
+        const verticesPerStrip = 2 * n + 2; // 22
+        const degenTPerStrip = 2; // 2
+        cylinderModel.vertexIndexBufferNumItems = numTStrips * (verticesPerStrip + degenTPerStrip)
+                                                - degenTPerStrip; // Last row doesn't have degen T
+
+        const cylinderVertexPositions = [];
+        const cylinderVertexNormals = [];
+        for (let j = 0; j < m; j++) { // One height
+            const y = j / m * h;
+            for (let i = 0; i < n; i++) { // Points along circumference
+                const t = i / n * 2 * Math.PI;
+                const x = r * Math.cos(t);
+                const z = r * Math.sin(t);
+                cylinderVertexPositions.push(x, y, z);
+                cylinderVertexNormals.push(x / r, 0, z / r); 
+            }
+        }
+        // Vertex positions
+        gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinderVertexPositions), gl.STATIC_DRAW);
+        // Normal vectors
+        gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylinderVertexNormals), gl.STATIC_DRAW);
+
+        const cylinderVertexIndices = [];
+        const totalPerStrip = verticesPerStrip + degenTPerStrip;
+        for (let j = 0; j < m - 1; j++) { // Each strip
+            // If not first row, add degenerate triangles
+            if (j != 0) {
+                cylinderVertexIndices.push((j - 1) * n, (j + 1) * n);
+            }
+            // First 4 vertices
+            cylinderVertexIndices.push((j + 1) * n, j * n, (j + 1) * n + 1, j * n + 1);
+            // Other vertices
+            for (let i = 2; i < n; i++) { // Each vertex
+                cylinderVertexIndices.push((j + 1) * n + i, j * n + i);
+            }
+            // Last 2 vertices
+            cylinderVertexIndices.push((j + 1) * n, j * n);
+        }
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylinderVertexIndices), gl.STATIC_DRAW);
+    }
+    cylinderModel.setupBuffers();
+
+    // Set up functions
+    cylinderModel.setupAttributes = function(colors) {
+        // Constant color for the cylinder
+        {
+            var r, g, b, a;
+            if (colors == null) {
+                a = 1.0, r = g = b = 0.7; // grey cylinder
+            } else { 
+                r = colors[0]; g = colors[1]; b = colors[2]; a = colors[3];
+            }
+
+            gl.disableVertexAttribArray(wgl.attribLocations.vertexColor);
+            gl.vertexAttrib4fv(wgl.attribLocations.vertexColor, [ r, g, b, a ]);
+        }
+        // Vertex positions
+        {
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
+
+            gl.enableVertexAttribArray(wgl.attribLocations.vertexPosition);
+            gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexPositionBuffer);
+            gl.vertexAttribPointer(wgl.attribLocations.vertexPosition,
+                                   cylinderModel.vertexPositionBufferItemSize,
+                                   type, norm, stride, offset);
+        }
+        // Vertex normals
+        {
+            const stride = 0; const offset = 0; const norm = false; const type = gl.FLOAT;
+
+            gl.enableVertexAttribArray(wgl.attribLocations.vertexNormal);
+            gl.bindBuffer(gl.ARRAY_BUFFER, cylinderModel.vertexNormalBuffer);
+            gl.vertexAttribPointer(wgl.attribLocations.vertexNormal,
+                                   cylinderModel.vertexNormalBufferItemSize,
+                                   type, norm, stride, offset);
+        }
+        // Element indices
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cylinderModel.vertexIndexBuffer);
+    }
+    cylinderModel.drawElements = function() {
+        const offset = 0;
+        gl.drawElements(gl.TRIANGLE_STRIP, cylinderModel.vertexIndexBufferNumItems,
+                        gl.UNSIGNED_SHORT, offset);
+    }
+
     // ------------------------------------
     // Put all models into wgl
     // ------------------------------------ 
     wgl.models = {
-        floor: floorModel,
-        cube:  cubeModel,
+        floor:    floorModel,
+        cube:     cubeModel,
+        cylinder: cylinderModel,
     }
 }
 
@@ -690,9 +799,26 @@ function initDrawables(gl, wgl) {
         }
     };
 
+    // ------------------------------------
+    // Instructions to draw cylinder
+    // ------------------------------------ 
+    cylinder = {
+        draw: function(deltaTime) {
+            wgl.models.cylinder.setupAttributes();
+            wgl.pushMatrix();
+                const trans = [ 0, 3, 0 ];
+                mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
+                wgl.uploadMvMatrix();
+                wgl.uploadNMatrix();
+
+                wgl.models.cylinder.drawElements();
+            wgl.popMatrix();
+        }
+    }
+
     // Put drawables into wgl
-    wgl.numberOfDrawables = 3;
-    wgl.listOfDrawables = [ floor, cube, table ];
+    wgl.numberOfDrawables = 4;
+    wgl.listOfDrawables = [ floor, cube, table, cylinder ];
 }
 
 // -------------------------------------------------------------------------------------------------
