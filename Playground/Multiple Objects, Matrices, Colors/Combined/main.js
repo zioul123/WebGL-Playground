@@ -16,7 +16,7 @@ var vsSource = vsSourceNone;
 var fsSource = fsSourceNone;
 
 // -------------------------------------------------------------------------------------------------
-// ----------------------------------- Interaction functions ---------------------------------------
+// ----------------------------------- Main/Render functions ---------------------------------------
 // -------------------------------------------------------------------------------------------------
 // Main function to setup and run the WebGL App.
 // -------------------------------------------------------------------------------------------------
@@ -221,7 +221,7 @@ function initModels(gl, wgl) {
     floorModel = {};
     // Set up buffers
     floorModel.setupBuffers = function() {
-        // Set up data
+        // Position related
         floorModel.vertexPositionBuffer           = gl.createBuffer();
         floorModel.vertexPositionBufferItemSize   = 3;
         floorModel.vertexPositionBufferNumItems   = 4;
@@ -231,6 +231,10 @@ function initModels(gl, wgl) {
         floorModel.vertexIndexBuffer              = gl.createBuffer();
         floorModel.vertexIndexBufferItemSize      = 1;
         floorModel.vertexIndexBufferRoundNumItems = 4;
+        // Color related (floor is the least shiny object)
+        floorModel.ambientReflectivity            = vec3.fromValues(0.8, 0.8, 0.8);
+        floorModel.diffuseReflectivity            = vec3.fromValues(0.5, 0.5, 0.5);
+        floorModel.specularReflectivity           = vec3.fromValues(0.3, 0.3, 0.3);
 
         // Fill vertex position buffer
         const floorVertexPositions = [
@@ -308,6 +312,7 @@ function initModels(gl, wgl) {
     cubeModel = {};
     // Set up buffers
     cubeModel.setupBuffers = function() {
+        // Position related
         cubeModel.vertexPositionBuffer           = gl.createBuffer();
         cubeModel.vertexPositionBufferItemSize   = 3;
         cubeModel.vertexPositionBufferNumItems   = 24;
@@ -317,6 +322,10 @@ function initModels(gl, wgl) {
         cubeModel.vertexIndexBuffer              = gl.createBuffer();
         cubeModel.vertexIndexBufferItemSize      = 1;
         cubeModel.vertexIndexBufferRoundNumItems = 36;
+        // Color related (cube is moderately shiny)
+        cubeModel.ambientReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
+        cubeModel.diffuseReflectivity            = vec3.fromValues(0.7, 0.7, 0.7);
+        cubeModel.specularReflectivity           = vec3.fromValues(0.6, 0.6, 0.6);
 
         const cubeVertexPositions = [
             // Front face
@@ -413,6 +422,8 @@ function initModels(gl, wgl) {
 
     // Set up functions
     cubeModel.setupAttributes = function(colors) {
+        // Set up light
+        setupLightForObject(gl, wgl, cubeModel);
         // Constant color for the cube
         {
             var r, g, b, a;
@@ -465,6 +476,7 @@ function initModels(gl, wgl) {
     const h = 1;  // Height of the cylinder
     // Set up buffers
     cylinderModel.setupBuffers = function() {
+        // Position related
         const numTStrips = m; // 10
         const verticesPerStrip = 2 * n + 2; // 22
         const degenTPerStrip = 2; // 2
@@ -481,6 +493,10 @@ function initModels(gl, wgl) {
         cylinderModel.vertexIndexBufferRoundNumItems = numTStrips * (verticesPerStrip 
                  + degenTPerStrip) - degenTPerStrip; // Last row doesn't have degen triangles
         cylinderModel.vertexIndexBufferLidNumItems   = n;
+        // Color related (cylinder is the shiny object)
+        cylinderModel.ambientReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
+        cylinderModel.diffuseReflectivity            = vec3.fromValues(1.0, 1.0, 1.0);
+        cylinderModel.specularReflectivity           = vec3.fromValues(1.0, 1.0, 1.0);
 
         const cylinderVertexPositions = [];
         const cylinderVertexNormals = [];
@@ -558,6 +574,8 @@ function initModels(gl, wgl) {
 
     // Set up functions
     cylinderModel.setupAttributes = function(colors) {
+        // Set up light
+        setupLightForObject(gl, wgl, cylinderModel);
         // Constant color for the cylinder
         {
             var r, g, b, a;
@@ -622,9 +640,9 @@ function initModels(gl, wgl) {
 // -------------------------------------------------------------------------------------------------
 function initLights(gl, wgl) {
     gl.uniform3fv(wgl.uniformLocations.lightPosition, [ 0.0, 20.0, 0.0 ]);
-    gl.uniform3fv(wgl.uniformLocations.ambientLightColor, [ 0.2, 0.2, 0.2 ]);
-    gl.uniform3fv(wgl.uniformLocations.diffuseLightColor, [ 0.7, 0.7, 0.7 ]);
-    gl.uniform3fv(wgl.uniformLocations.specularLightColor, [ 0.8, 0.8, 0.8 ]);
+    wgl.ambientLight  = vec3.fromValues(0.2, 0.2, 0.2);
+    wgl.diffuseLight  = vec3.fromValues(0.7, 0.7, 0.7);
+    wgl.specularLight = vec3.fromValues(0.8, 0.8, 0.8);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -713,7 +731,6 @@ function initListeners(gl, wgl, canvas, render) {
     // ------------------------------------ 
     // Keyboard related
     // ------------------------------------ 
-
     wgl.listOfPressedKeys = []; // Keep track of pressed down keys
     function handleKeyDown(event) {
         wgl.listOfPressedKeys[event.keyCode] = true;
@@ -892,6 +909,19 @@ function initDrawables(gl, wgl) {
     wgl.listOfOpaqueDrawables = [ floor, cube, table ];
     wgl.numberOfTransparentDrawables = 1;
     wgl.listOfTransparentDrawables = [ cylinder ];
+}
+
+// -------------------------------------------------------------------------------------------------
+// Set up light uniforms for a model.
+// -------------------------------------------------------------------------------------------------
+function setupLightForObject(gl, wgl, model) {
+    var vec = vec3.create(); // Placeholder vector to store outputs of vec3.multiply
+    gl.uniform3fv(wgl.uniformLocations.ambientLightColor, 
+                  multiply(vec, model.ambientReflectivity, wgl.ambientLight));
+    gl.uniform3fv(wgl.uniformLocations.diffuseLightColor, 
+                  multiply(vec, model.diffuseReflectivity, wgl.diffuseLight));
+    gl.uniform3fv(wgl.uniformLocations.specularLightColor,
+                  multiply(vec, model.specularReflectivity, wgl.specularLight));
 }
 
 // -------------------------------------------------------------------------------------------------
