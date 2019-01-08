@@ -562,7 +562,7 @@ function initModels(gl, wgl) {
         {
             var r, g, b, a;
             if (colors == null) {
-                a = 0.5, r = g = b = 0.7; // grey cylinder
+                a = 0.5, r = g = 0.3, b = 0.7; // blueish cylinder
             } else { 
                 r = colors[0]; g = colors[1]; b = colors[2]; a = colors[3];
             }
