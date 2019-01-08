@@ -2,6 +2,7 @@ const vsSourceNone = `
     // ========= DUMMY ==========
     attribute vec3 aVertexNormal;
     uniform mat3 uNMatrix;
+    uniform float shininess;
     uniform vec3 uLightPosition;
     uniform vec3 uAmbientLightColor;    // Ka * Ia
     uniform vec3 uDiffuseLightColor;    // Kd * Id
@@ -19,7 +20,7 @@ const vsSourceNone = `
 
     void main() 
     {
-        aVertexNormal; // prevent the shader from optimizing this attrib away
+        aVertexNormal; shininess; // prevent the shader from optimizing these attribs away
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vColor = aVertexColor;
         vLightWeighting = vec3(1.0, 1.0, 1.0); // Dummy value
@@ -39,12 +40,11 @@ const vsSourceGouraud = `
     uniform vec3 uAmbientLightColor;    // Ka * Ia
     uniform vec3 uDiffuseLightColor;    // Kd * Id
     uniform vec3 uSpecularLightColor;   // Ks * Is
+    uniform float shininess;
 
     varying vec3 vLightWeighting;
     varying vec4 vColor; 
-
-    const float shininess = 32.0;
-
+    
     void main() 
     {
         // World coordinates of the vertex
