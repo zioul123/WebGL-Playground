@@ -265,6 +265,8 @@ function initModels(gl, wgl) {
 
     // Set up functions
     floorModel.setupAttributes = function(colors) {
+        // Set up light
+        setupLightForObject(gl, wgl, floorModel);
         // Constant color for the floor
         {
             var r, g, b, a;
