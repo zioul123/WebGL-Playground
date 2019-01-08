@@ -9,6 +9,10 @@ var cubeScale    = 1; // Scale of the cube
 const cubePeriod = 2; // 2s per round
 const cubeRadius = 5; // 5 units away
 
+// Cylinder drawing related
+var cylinderAngle = 0; 
+const cylinderPeriod = 1; // 1s per round
+
 // -------------------------------------------------------------------------------------------------
 // ----------------------------------- Interaction functions ---------------------------------------
 // -------------------------------------------------------------------------------------------------
@@ -806,8 +810,16 @@ function initDrawables(gl, wgl) {
         draw: function(deltaTime) {
             wgl.models.cylinder.setupAttributes();
             wgl.pushMatrix();
-                const trans = [ 0, 3, 0 ];
+                const trans  = [ 0, 3, 0 ];
+                const axis   = [ 0, 0, 1 ];
+                const offset = [ 0, -0.5, 0 ];
+
+                // Animation portion
+                cylinderAngle += deltaTime / cylinderPeriod * 2 * Math.PI;
+                
                 mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, trans);
+                mat4.rotate(wgl.modelViewMatrix, wgl.modelViewMatrix, cylinderAngle, axis);
+                mat4.translate(wgl.modelViewMatrix, wgl.modelViewMatrix, offset);
                 wgl.uploadMvMatrix();
                 wgl.uploadNMatrix();
 
