@@ -19,9 +19,10 @@ var fsSource = fsSourceNone;
 function main() {
     var canvas = document.querySelector("#glcanvas"); // or document.getElementById("myGLCanvas");
     canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
-    
+
     const gl = WebGLDebugUtils.makeDebugContext(createGLContext(canvas)); // Init the GL context
-    const wgl = {};                 // The object to hold all web gl information
+    const wgl = {}; // The object to hold all web gl information
+    wgl.fpsCounter = document.getElementById("fps"); // The FPS counter
     const render = createRenderFunction(gl, wgl, drawScene);
 
     init(gl, wgl); // Initialize shaders, models/buffers and gl properties
@@ -81,19 +82,30 @@ function createGLContext(canvas) {
 // Create a render loop function that holds gl, wgl, and draw function in scope.
 // -------------------------------------------------------------------------------------------------
 function createRenderFunction(gl, wgl, drawScene) {
-    var prevTime = 0; // The previous frame time
+    var prevTime           = 0; // The previous frame time
+    var prevFrameTimeStamp = 0; // The time of the last FPS updte
+    var numOfFramesForFps  = 0; // The number of frames counted
     function render(currTime) {
+        // Request next frame before drawing current frame
+        wgl.requestId = requestAnimationFrame(render);
         // Handle timing
         currTime *= 0.001;              // Convert millis to seconds
         const deltaTime = currTime - prevTime;
         prevTime = currTime;
+        // Handle FPS counter
+        if (currTime - prevFrameTimeStamp >= 1) {
+            wgl.fpsCounter.innerHTML = numOfFramesForFps;
+            numOfFramesForFps = 0;
+            prevFrameTimeStamp = currTime;
+        }
         // Handle keypress events
         handlePressedDownKeys(gl, wgl);
         // Handle mouse movement
         handleMouseMovement(wgl);
-        // Draw and request next frame
+        // Draw 
         drawScene(gl, wgl, deltaTime);
-        wgl.requestId = requestAnimationFrame(render);
+        // Add to FPS counter
+        numOfFramesForFps++;
     }
     return render;
 }
