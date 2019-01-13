@@ -759,7 +759,9 @@ function initListeners(gl, wgl, canvas, render) {
             "Controls:\n" +
             "Left click and drag: Rotate view\n" +
             "z/x: zoom in/out\n" +
-            "Arrow keys: rotate the view.");
+            "c/v: grow/shrink the cube\n" +
+            "Arrow keys: rotate the view\n" +
+            "1, 2, 3: Change between no lighting, Gouraud shading, and Phong shading.");
 }
 
 // -------------------------------------------------------------------------------------------------
